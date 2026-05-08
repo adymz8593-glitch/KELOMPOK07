@@ -3,36 +3,42 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use App\Models\User;
 use Illuminate\Support\Facades\Hash;
-// BARIS DI BAWAH INI ADALAH KUNCI UNTUK MEMPERBAIKI ERROR TADI:
-use App\Models\User; 
+use Illuminate\Support\Facades\DB;
 
 class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        // 1. Akun Admin
+        // Matikan proteksi foreign key sementara (untuk sqlite/mysql)
+        DB::statement('PRAGMA foreign_keys = OFF'); 
+        
+        // Bersihkan data user lama
+        User::truncate();
+
+        // Akun Admin
         User::create([
+            'name' => 'Administrator',
             'username' => 'admin',
-            'gmail' => 'admin@gmail.com',
-            'password' => Hash::make('12345'),
-            'role' => 'Admin'
+            'password' => Hash::make('admin123'),
+            'role' => 'admin',
         ]);
 
-        // 2. Akun Kepala Bidang (Role hasil revisi sidang)
+        // Akun Kabid
         User::create([
+            'name' => 'Kepala Bidang',
             'username' => 'kabid',
-            'gmail' => 'kabid@gmail.com',
-            'password' => Hash::make('12345'),
-            'role' => 'Kepala Bidang'
+            'password' => Hash::make('kabid123'),
+            'role' => 'kabid',
         ]);
 
-        // 3. Akun Karyawan
+        // Akun Karyawan
         User::create([
+            'name' => 'Karyawan',
             'username' => 'karyawan',
-            'gmail' => 'karyawan@gmail.com',
-            'password' => Hash::make('12345'),
-            'role' => 'Karyawan'
+            'password' => Hash::make('user123'),
+            'role' => 'karyawan',
         ]);
     }
 }

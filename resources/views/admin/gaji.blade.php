@@ -33,7 +33,7 @@
             <tbody>
                 @forelse($gajis as $g)
                 <tr>
-                    <td class="px-4 py-3"><span class="fw-bold">{{ $g->bulan }}</span></td>
+                    <td class="px-4 py-3"><span class="fw-bold">{{ $g->bulan }} {{ $g->tahun }}</span></td>
                     <td class="text-muted">{{ $g->created_at->format('d M Y') }}</td>
                     <td>
                         <div class="d-flex align-items-center">
@@ -43,14 +43,22 @@
                     </td>
                     <td class="text-end fw-bold text-primary">Rp {{ number_format($g->total_gaji, 0, ',', '.') }}</td>
                     <td class="text-center">
-                        <span class="badge bg-emerald-light text-success px-3 py-2 border border-success-subtle">
-                            {{ $g->status_pembayaran ?? 'Selesai' }}
+                        <span class="badge bg-light text-success px-3 py-2 border border-success-subtle">
+                            {{ $g->status ?? 'Selesai' }}
                         </span>
                     </td>
                     <td class="text-center">
-                        <a href="{{ route('admin.gaji.cetak', $g->id) }}" class="btn btn-sm btn-outline-danger shadow-sm px-3" style="border-radius: 8px;">
-                            <i class="bi bi-file-earmark-pdf me-1"></i> Slip PDF
-                        </a>
+                        <div class="d-flex justify-content-center gap-2">
+                            <a href="{{ route('admin.gaji.cetak', $g->id) }}" class="btn btn-sm btn-outline-danger" style="border-radius: 8px;">
+                                <i class="bi bi-file-earmark-pdf"></i>
+                            </a>
+                            <form action="{{ route('admin.gaji.destroy', $g->id) }}" method="POST" onsubmit="return confirm('Hapus data gaji ini?')">
+                                @csrf @method('DELETE')
+                                <button type="submit" class="btn btn-sm btn-light text-danger border">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
                 @empty
@@ -63,4 +71,64 @@
     </div>
 </div>
 
+{{-- MODAL INPUT GAJI BARU --}}
+<div class="modal fade" id="tambahGajiModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow" style="border-radius: 20px;">
+            <div class="modal-header border-0 pt-4 px-4">
+                <h5 class="modal-title fw-bold">Input Gaji Baru</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ route('admin.gaji.store') }}" method="POST">
+                @csrf
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Pilih Karyawan</label>
+                        <select name="karyawan_id" class="form-select" required>
+                            <option value="" disabled selected>Pilih Karyawan</option>
+                            @foreach($karyawans as $k)
+                                <option value="{{ $k->id }}">{{ $k->nama_karyawan }} ({{ $k->nik }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold">Bulan</label>
+                            <select name="bulan" class="form-select" required>
+                                @foreach(['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'] as $bln)
+                                    <option value="{{ $bln }}" {{ date('F') == $bln ? 'selected' : '' }}>{{ $bln }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold">Tahun</label>
+                            <input type="number" name="tahun" class="form-control" value="{{ date('Y') }}" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Gaji Pokok</label>
+                        <div class="input-group">
+                            <span class="input-group-text">Rp</span>
+                            <input type="number" name="gaji_pokok" class="form-control" placeholder="0" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label fw-bold text-success">Tunjangan</label>
+                            <input type="number" name="tunjangan" class="form-control" value="0">
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label fw-bold text-danger">Potongan</label>
+                            <input type="number" name="potongan" class="form-control" value="0">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pb-4 px-4">
+                    <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary px-4 shadow-sm">Simpan & Cairkan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection

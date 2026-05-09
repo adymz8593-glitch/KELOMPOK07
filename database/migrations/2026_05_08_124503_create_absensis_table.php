@@ -10,12 +10,17 @@ return new class extends Migration
     {
         Schema::create('absensis', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('karyawan_id')->constrained('karyawans')->onDelete('cascade');
+            // Gunakan unsignedBigInteger untuk keamanan ekstra di SQLite
+            $table->unsignedBigInteger('karyawan_id'); 
             $table->date('tanggal');
             $table->time('jam_masuk')->nullable();
-            $table->time('jam_keluar')->nullable();
-            $table->enum('status', ['Hadir', 'Izin', 'Sakit', 'Alpha'])->default('Alpha');
+            $table->time('jam_pulang')->nullable(); // Saya ganti ke jam_pulang biar sinkron dengan Controller
+            $table->enum('status', ['Hadir', 'Telat', 'Izin', 'Sakit', 'Alpha'])->default('Alpha');
+            $table->string('keterangan')->nullable(); // Tambahkan kolom keterangan sesuai permintaan
             $table->timestamps();
+
+            // Definisi Foreign Key manual agar lebih stabil
+            $table->foreign('karyawan_id')->references('id')->on('karyawans')->onDelete('cascade');
         });
     }
 

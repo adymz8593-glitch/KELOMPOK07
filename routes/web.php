@@ -28,7 +28,6 @@ Route::middleware(['auth'])->group(function () {
         // Kelola Data Karyawan
         Route::get('/karyawan', [KaryawanController::class, 'index'])->name('admin.karyawan');
         Route::post('/karyawan/store', [KaryawanController::class, 'store'])->name('admin.karyawan.store');
-        // Baris di bawah ini yang tadi bikin error, sekarang sudah diperbaiki:
         Route::delete('/karyawan/{id}', [KaryawanController::class, 'destroy'])->name('admin.karyawan.destroy');
 
         // Rekap Absensi
@@ -38,15 +37,33 @@ Route::middleware(['auth'])->group(function () {
         // Kelola Gaji & Cetak PDF
         Route::get('/gaji', [GajiController::class, 'index'])->name('admin.gaji');
         Route::post('/gaji/store', [GajiController::class, 'store'])->name('admin.gaji.store');
+        Route::delete('/gaji/{id}', [GajiController::class, 'destroy'])->name('admin.gaji.destroy');
         Route::get('/gaji/cetak/{id}', [GajiController::class, 'cetakPdf'])->name('admin.gaji.cetak');
     });
 
     // --- AREA KARYAWAN ---
-    Route::get('/karyawan/dashboard', [KaryawanController::class, 'dashboard'])->name('karyawan.dashboard');
-    Route::post('/karyawan/absen', [AbsensiController::class, 'storeMandiri'])->name('karyawan.absen');
+    Route::prefix('karyawan')->group(function () {
+        Route::get('/dashboard', [KaryawanController::class, 'dashboard'])->name('karyawan.dashboard');
+        
+        // Menu Absensi & Gaji untuk Karyawan
+        Route::get('/absensi', [AbsensiController::class, 'indexKaryawan'])->name('karyawan.absensi');
+        Route::get('/gaji', [GajiController::class, 'indexKaryawan'])->name('karyawan.gaji');
+        
+        Route::post('/absen', [AbsensiController::class, 'storeMandiri'])->name('karyawan.absen');
+    });
 
     // --- AREA KABID ---
-    Route::get('/kabid/dashboard', function () { 
-        return view('kabid.dashboard'); 
-    })->name('kabid.dashboard');
+    Route::prefix('kabid')->group(function () {
+        // Dashboard Kabid
+        Route::get('/dashboard', function () { 
+            return view('kabid.dashboard'); 
+        })->name('kabid.dashboard');
+
+        // Kabid melihat data gaji & absensi
+        Route::get('/gaji', [GajiController::class, 'index'])->name('kabid.gaji');
+        Route::get('/absensi', [AbsensiController::class, 'index'])->name('kabid.absensi');
+
+        // Fitur Utama Kabid: ACC Gaji
+        Route::post('/gaji/acc/{id}', [GajiController::class, 'accGaji'])->name('kabid.gaji.acc');
+    });
 });

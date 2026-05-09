@@ -12,12 +12,20 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('karyawans', function (Blueprint $table) {
-            $table->string('nik')->primary(); // Primary Key
+            // 1. Primary Key Utama (Auto Increment)
+            $table->id(); 
+            
+            // 2. Relasi ke tabel users (Akun Login)
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-            $table->string('kode_jabatan');
+            
+            // 3. Data Identitas Karyawan
+            $table->string('nik')->unique(); // NIK tetap unik, tapi bukan primary key
             $table->string('nama_karyawan');
-            $table->text('alamat');          // Revisi alamat
-            $table->integer('tahun_lahir');  // Revisi tahun lahir
+            $table->string('kode_jabatan');
+            $table->text('alamat')->nullable();
+            $table->integer('tahun_lahir')->nullable();
+            
+            // 4. Timestamp (created_at & updated_at)
             $table->timestamps();
         });
     }

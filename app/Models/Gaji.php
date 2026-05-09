@@ -14,16 +14,16 @@ class Gaji extends Model
     protected $fillable = [
         'karyawan_id',
         'bulan',
+        'tahun',           // <--- WAJIB DITAMBAHKAN
         'gaji_pokok',
         'tunjangan',
         'potongan',
         'total_gaji',
-        'status_pembayaran'
+        'status'           // <--- Sesuaikan dengan nama kolom di migrasi (status atau status_pembayaran)
     ];
 
     /**
      * Relasi ke model Karyawan
-     * Ini supaya kamu bisa panggil $gaji->karyawan->nama_karyawan di view
      */
     public function karyawan()
     {

@@ -17,7 +17,18 @@
     </div>
 @endif
 
-<div class="card shadow-sm p-4">
+{{-- Menampilkan error validasi jika ada --}}
+@if ($errors->any())
+    <div class="alert alert-danger border-0 shadow-sm mb-4" style="border-radius: 15px;">
+        <ul class="mb-0">
+            @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
+
+<div class="card shadow-sm p-4 border-0" style="border-radius: 20px;">
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
@@ -30,7 +41,8 @@
                 </tr>
             </thead>
             <tbody>
-                @forelse($karyawan as $k)
+                {{-- PERBAIKAN: Variabel disesuaikan dengan Controller ($karyawans) --}}
+                @forelse($karyawans as $k)
                 <tr>
                     <td class="px-4 py-3">
                         <div class="d-flex align-items-center">
@@ -42,11 +54,10 @@
                     <td class="text-muted">#{{ $k->nik }}</td>
                     <td class="text-muted">{{ Str::limit($k->alamat, 30) }}</td>
                     <td class="text-center">
-                        {{-- PERBAIKAN: Pastikan parameter ID tidak null --}}
-                        <form action="{{ route('admin.karyawan.destroy', $k->id ?? 0) }}" method="POST">
+                        <form action="{{ route('admin.karyawan.destroy', $k->id) }}" method="POST">
                             @csrf
                             @method('DELETE')
-                            <button type="submit" class="btn btn-sm btn-light text-danger border" onclick="return confirm('Hapus data ini?')">
+                            <button type="submit" class="btn btn-sm btn-light text-danger border" onclick="return confirm('Hapus data ini dan akun loginnya?')">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </form>
@@ -65,6 +76,7 @@
     </div>
 </div>
 
+{{-- MODAL TAMBAH KARYAWAN --}}
 <div class="modal fade" id="tambahKaryawanModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow" style="border-radius: 20px;">
@@ -72,7 +84,6 @@
                 <h5 class="modal-title fw-bold">Tambah Karyawan Baru</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            {{-- PERBAIKAN: Rute store disesuaikan dengan web.php --}}
             <form action="{{ route('admin.karyawan.store') }}" method="POST">
                 @csrf
                 <div class="modal-body p-4">
@@ -114,7 +125,7 @@
                 </div>
                 <div class="modal-footer border-0 pb-4 px-4">
                     <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary px-4">Simpan Karyawan</button>
+                    <button type="submit" class="btn btn-primary px-4 shadow-sm">Simpan Karyawan</button>
                 </div>
             </form>
         </div>

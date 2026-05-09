@@ -5,12 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Absensi;
 use App\Models\Karyawan;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth; // Wajib tambah ini untuk deteksi siapa yang login
+use Illuminate\Support\Facades\Auth;
 
 class AbsensiController extends Controller
 {
     /**
-     * FUNGSI UNTUK ADMIN: Melihat Rekap Absensi
+     * FUNGSI UNTUK ADMIN: Melihat Rekap Absensi Seluruh Karyawan
      */
     public function index(Request $request)
     {
@@ -27,6 +27,7 @@ class AbsensiController extends Controller
             $telat = $dataAbsensi->where('status', 'Telat')->count();
             $alpa  = $dataAbsensi->where('status', 'Alpa')->count();
 
+            // Logika potongan sederhana
             $potongan = ($alpa * 50000) + ($telat * 10000);
 
             return (object) [
@@ -44,16 +45,42 @@ class AbsensiController extends Controller
     }
 
     /**
-     * FUNGSI UNTUK KARYAWAN: Klik Tombol Hadir (Baru)
+     * FUNGSI UNTUK KARYAWAN: Melihat Riwayat Absensi Pribadi
+     */
+    public function indexKaryawan()
+    {
+        $user = Auth::user();
+        
+        // Cari profil karyawan berdasarkan user_id yang login
+        $profil = Karyawan::where('user_id', $user->id)->first();
+
+        if (!$profil) {
+            return redirect()->route('karyawan.dashboard')->with('error', 'Profil karyawan tidak ditemukan.');
+        }
+
+        // Ambil riwayat absen si karyawan tersebut
+        $absensi = Absensi::where('karyawan_id', $profil->id)
+                    ->orderBy('tanggal', 'desc')
+                    ->get();
+
+        return view('karyawan.absensi', compact('absensi', 'profil'));
+    }
+
+    /**
+     * FUNGSI UNTUK KARYAWAN: Klik Tombol Absen (Simpan Mandiri)
      */
     public function storeMandiri(Request $request)
     {
         $user = Auth::user();
         
-        // 1. Cari data profil karyawan berdasarkan user_id yang login
+        // 1. Cari profil karyawan
         $profil = Karyawan::where('user_id', $user->id)->first();
 
-        // 2. Cek apakah sudah absen hari ini? (mencegah absen double)
+        if (!$profil) {
+            return redirect()->back()->with('error', 'Profil tidak ditemukan.');
+        }
+
+        // 2. Cek apakah sudah absen hari ini?
         $cek = Absensi::where('karyawan_id', $profil->id)
                       ->whereDate('tanggal', date('Y-m-d'))
                       ->first();
@@ -62,7 +89,7 @@ class AbsensiController extends Controller
             return redirect()->back()->with('error', 'Kamu sudah melakukan absen hari ini!');
         }
 
-        // 3. Tentukan status (Batas jam 08:00)
+        // 3. Tentukan status (Contoh: Batas jam 08:00)
         $jamSekarang = date('H:i');
         $status = ($jamSekarang > '08:00') ? 'Telat' : 'Hadir';
 

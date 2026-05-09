@@ -34,6 +34,8 @@
             padding: 20px 0;
             box-shadow: 4px 0 10px rgba(0,0,0,0.05);
             z-index: 100;
+            display: flex;
+            flex-direction: column;
         }
 
         .sidebar-brand {
@@ -44,6 +46,10 @@
             align-items: center;
             color: white;
             text-decoration: none;
+        }
+
+        .nav-wrapper {
+            flex-grow: 1;
         }
 
         .nav-link { 
@@ -64,67 +70,69 @@
         /* Main Content */
         .main-content { margin-left: 260px; padding: 40px; }
 
-        /* Welcome Section */
-        .welcome-banner {
-            background: var(--primary);
-            color: white;
-            padding: 30px;
-            border-radius: 24px;
-            margin-bottom: 30px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .welcome-banner h1 { font-weight: 700; font-size: 1.75rem; }
-        .welcome-banner p { opacity: 0.8; margin-bottom: 0; }
-
         /* Card & Table Styling */
         .card { border-radius: 20px; border: none; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        
+        .logout-section {
+            padding: 20px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
     </style>
 </head>
 <body>
 
 <div class="sidebar">
-    {{-- Redirect Brand sesuai Role --}}
+    {{-- Brand Link --}}
     <a href="{{ auth()->user()->role == 'admin' ? route('admin.dashboard') : route('karyawan.dashboard') }}" class="sidebar-brand">
         <i class="bi bi-wallet2 me-2 text-primary"></i> E-Payroll
     </a>
     
-    <nav>
-        {{-- MENU KHUSUS ADMIN --}}
-        @if(auth()->user()->role == 'admin')
-            <div class="px-4 mb-2 text-uppercase fw-bold" style="font-size: 0.7rem; color: #64748b; letter-spacing: 1px;">Admin Panel</div>
-            
-            <a href="{{ route('admin.dashboard') }}" class="nav-link {{ Request::is('admin/dashboard') ? 'active' : '' }}">
-                <i class="bi bi-grid-1x2-fill"></i> Dashboard
-            </a>
-            <a href="{{ route('admin.karyawan') }}" class="nav-link {{ Request::is('admin/karyawan*') ? 'active' : '' }}">
-                <i class="bi bi-people-fill"></i> Data Karyawan
-            </a>
-            <a href="{{ route('admin.absensi') }}" class="nav-link {{ Request::is('admin/absensi*') ? 'active' : '' }}">
-                <i class="bi bi-calendar2-check-fill"></i> Rekap Absensi
-            </a>
-            <a href="{{ route('admin.gaji') }}" class="nav-link {{ Request::is('admin/gaji*') ? 'active' : '' }}">
-                <i class="bi bi-cash-stack"></i> Kelola Gaji
-            </a>
-        @endif
+    <div class="nav-wrapper">
+        <nav>
+            {{-- MENU KHUSUS ADMIN --}}
+            @if(auth()->user()->role == 'admin')
+                <div class="px-4 mb-2 text-uppercase fw-bold" style="font-size: 0.7rem; color: #64748b; letter-spacing: 1px;">Admin Panel</div>
+                
+                <a href="{{ route('admin.dashboard') }}" class="nav-link {{ Request::is('admin/dashboard') ? 'active' : '' }}">
+                    <i class="bi bi-grid-1x2-fill"></i> Dashboard
+                </a>
+                <a href="{{ route('admin.karyawan') }}" class="nav-link {{ Request::is('admin/karyawan*') ? 'active' : '' }}">
+                    <i class="bi bi-people-fill"></i> Data Karyawan
+                </a>
+                <a href="{{ route('admin.absensi') }}" class="nav-link {{ Request::is('admin/absensi*') ? 'active' : '' }}">
+                    <i class="bi bi-calendar2-check-fill"></i> Rekap Absensi
+                </a>
+                <a href="{{ route('admin.gaji') }}" class="nav-link {{ Request::is('admin/gaji*') ? 'active' : '' }}">
+                    <i class="bi bi-cash-stack"></i> Kelola Gaji
+                </a>
+            @endif
 
-        {{-- MENU KHUSUS KARYAWAN --}}
-        @if(auth()->user()->role == 'karyawan')
-            <div class="px-4 mb-2 text-uppercase fw-bold" style="font-size: 0.7rem; color: #64748b; letter-spacing: 1px;">Menu Karyawan</div>
-            
-            <a href="{{ route('karyawan.dashboard') }}" class="nav-link {{ Request::is('karyawan/dashboard') ? 'active' : '' }}">
-                <i class="bi bi-house-door-fill"></i> Dashboard Saya
-            </a>
-            {{-- Kamu bisa tambah menu slip gaji atau profil di sini nanti --}}
-        @endif
-    </nav>
+            {{-- MENU KHUSUS KARYAWAN --}}
+            @if(auth()->user()->role == 'karyawan')
+                <div class="px-4 mb-2 text-uppercase fw-bold" style="font-size: 0.7rem; color: #64748b; letter-spacing: 1px;">Menu Karyawan</div>
+                
+                <a href="{{ route('karyawan.dashboard') }}" class="nav-link {{ Request::is('karyawan/dashboard') ? 'active' : '' }}">
+                    <i class="bi bi-house-door-fill"></i> Dashboard
+                </a>
+                
+                {{-- PERBAIKAN: Hubungkan ke route karyawan.absensi --}}
+                <a href="{{ route('karyawan.absensi') }}" class="nav-link {{ Request::is('karyawan/absensi*') ? 'active' : '' }}">
+                    <i class="bi bi-calendar-check-fill"></i> Absensi Saya
+                </a>
 
-    {{-- Tombol Logout Selalu di Bawah --}}
-    <div style="position: absolute; bottom: 20px; width: 100%;" class="px-3">
+                {{-- PERBAIKAN: Hubungkan ke route karyawan.gaji --}}
+                <a href="{{ route('karyawan.gaji') }}" class="nav-link {{ Request::is('karyawan/gaji*') ? 'active' : '' }}">
+                    <i class="bi bi-file-earmark-spreadsheet-fill"></i> Slip Gaji
+                </a>
+            @endif
+        </nav>
+    </div>
+
+    {{-- BAGIAN LOGOUT --}}
+    <div class="logout-section">
         <form action="{{ route('logout') }}" method="POST">
             @csrf
-            <button type="submit" class="btn btn-outline-danger border-0 w-100 d-flex align-items-center justify-content-center fw-bold" style="background: rgba(244, 63, 94, 0.1);">
+            <button type="submit" class="btn btn-outline-danger border-0 w-100 d-flex align-items-center justify-content-center fw-bold" style="background: rgba(244, 63, 94, 0.1); border-radius: 12px; padding: 10px;">
                 <i class="bi bi-box-arrow-left me-2"></i> Keluar
             </button>
         </form>

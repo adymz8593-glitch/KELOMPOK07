@@ -10,6 +10,9 @@ class Karyawan extends Model
     use HasFactory;
 
     protected $table = 'karyawans';
+    
+    // Memberitahu Laravel bahwa kuncinya adalah 'id' (sudah benar)
+    protected $primaryKey = 'id'; 
 
     protected $fillable = [
         'nik', 
@@ -29,10 +32,18 @@ class Karyawan extends Model
     }
 
     /**
-     * Relasi ke model Gaji (Jika ingin menarik data gaji dari karyawan)
+     * Relasi ke model Gaji
      */
     public function gajis()
     {
         return $this->hasMany(Gaji::class, 'karyawan_id');
+    }
+
+    /**
+     * Tambahkan relasi ke Absensi agar mudah ditarik datanya
+     */
+    public function absensis()
+    {
+        return $this->hasMany(Absensi::class, 'karyawan_id');
     }
 }

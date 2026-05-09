@@ -9,13 +9,22 @@ class Absensi extends Model
 {
     use HasFactory;
 
-    protected $table = 'absensis'; // Sesuaikan dengan nama tabel di migration kamu
+    protected $table = 'absensis';
 
     protected $fillable = [
         'karyawan_id',
         'tanggal',
         'jam_masuk',
-        'jam_keluar',
-        'status'
+        'jam_pulang', // Disarankan pakai jam_pulang agar sama dengan logika di Controller
+        'status',
+        'keterangan' // Tambahkan ini agar keterangan bisa tersimpan
     ];
+
+    /**
+     * Relasi ke model Karyawan
+     */
+    public function karyawan()
+    {
+        return $this->belongsTo(Karyawan::class, 'karyawan_id');
+    }
 }

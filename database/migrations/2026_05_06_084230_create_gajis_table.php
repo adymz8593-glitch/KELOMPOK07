@@ -10,13 +10,17 @@ return new class extends Migration
     {
         Schema::create('gajis', function (Blueprint $table) {
             $table->id();
-            $table->string('nik');
-            $table->string('nama_karyawan');
+            
+            // Hubungkan ke tabel karyawans menggunakan ID
+            $table->foreignId('karyawan_id')->constrained('karyawans')->onDelete('cascade');
+            
+            $table->string('bulan');
+            $table->integer('tahun'); // Tambahkan kolom tahun
             $table->integer('gaji_pokok');
             $table->integer('tunjangan')->default(0);
             $table->integer('potongan')->default(0);
             $table->integer('total_gaji');
-            $table->string('bulan');
+            $table->string('status')->default('Dibayar'); // Tambahkan status
             $table->timestamps();
         });
     }

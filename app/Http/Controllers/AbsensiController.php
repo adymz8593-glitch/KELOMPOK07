@@ -10,14 +10,39 @@ use Illuminate\Support\Facades\Auth;
 class AbsensiController extends Controller
 {
     /**
-     * FUNGSI UNTUK ADMIN: Melihat Rekap Absensi Seluruh Karyawan
+     * FUNGSI UNTUK ADMIN: Melihat Rekap Absensi
      */
     public function index(Request $request)
     {
         $bulan = $request->get('bulan', date('m'));
         $tahun = $request->get('tahun', date('Y'));
 
-        $rekapAbsensi = Karyawan::all()->map(function($karyawan) use ($bulan, $tahun) {
+        $rekapAbsensi = $this->getRekapData($bulan, $tahun);
+
+        return view('admin.absensi', compact('rekapAbsensi', 'bulan', 'tahun'));
+    }
+
+    /**
+     * FUNGSI UNTUK KABID: Menangani route 'kabid.absensi'
+     * Ini fungsi yang dipanggil di web.php kamu
+     */
+    public function indexKabid(Request $request)
+    {
+        $bulan = $request->get('bulan', date('m'));
+        $tahun = $request->get('tahun', date('Y'));
+
+        $rekapAbsensi = $this->getRekapData($bulan, $tahun);
+
+        // Diarahkan ke folder kabid agar sidebar tidak hilang
+        return view('kabid.absensi', compact('rekapAbsensi', 'bulan', 'tahun'));
+    }
+
+    /**
+     * Helper Function: Agar tidak menulis logika rekap dua kali
+     */
+    private function getRekapData($bulan, $tahun)
+    {
+        return Karyawan::all()->map(function($karyawan) use ($bulan, $tahun) {
             $dataAbsensi = Absensi::where('karyawan_id', $karyawan->id)
                 ->whereMonth('tanggal', $bulan)
                 ->whereYear('tanggal', $tahun)
@@ -27,21 +52,18 @@ class AbsensiController extends Controller
             $telat = $dataAbsensi->where('status', 'Telat')->count();
             $alpa  = $dataAbsensi->where('status', 'Alpa')->count();
 
-            // Logika potongan sederhana
             $potongan = ($alpa * 50000) + ($telat * 10000);
 
             return (object) [
                 'nama'     => $karyawan->nama_karyawan,
                 'nik'      => $karyawan->nik,
-                'periode'  => date('F', mktime(0, 0, 0, $bulan, 1)) . ' ' . $tahun,
+                'periode'  => date('F', mktime(0, 0, 0, (int)$bulan, 1)) . ' ' . $tahun,
                 'hadir'    => $hadir,
                 'telat'    => $telat,
                 'alpa'     => $alpa,
                 'potongan' => $potongan
             ];
         });
-
-        return view('admin.absensi', compact('rekapAbsensi', 'bulan', 'tahun'));
     }
 
     /**
@@ -50,15 +72,12 @@ class AbsensiController extends Controller
     public function indexKaryawan()
     {
         $user = Auth::user();
-        
-        // Cari profil karyawan berdasarkan user_id yang login
         $profil = Karyawan::where('user_id', $user->id)->first();
 
         if (!$profil) {
-            return redirect()->route('karyawan.dashboard')->with('error', 'Profil karyawan tidak ditemukan.');
+            return redirect()->route('karyawan.dashboard')->with('error', 'Profil tidak ditemukan.');
         }
 
-        // Ambil riwayat absen si karyawan tersebut
         $absensi = Absensi::where('karyawan_id', $profil->id)
                     ->orderBy('tanggal', 'desc')
                     ->get();
@@ -67,20 +86,17 @@ class AbsensiController extends Controller
     }
 
     /**
-     * FUNGSI UNTUK KARYAWAN: Klik Tombol Absen (Simpan Mandiri)
+     * FUNGSI UNTUK KARYAWAN: Klik Tombol Absen Mandiri
      */
     public function storeMandiri(Request $request)
     {
         $user = Auth::user();
-        
-        // 1. Cari profil karyawan
         $profil = Karyawan::where('user_id', $user->id)->first();
 
         if (!$profil) {
             return redirect()->back()->with('error', 'Profil tidak ditemukan.');
         }
 
-        // 2. Cek apakah sudah absen hari ini?
         $cek = Absensi::where('karyawan_id', $profil->id)
                       ->whereDate('tanggal', date('Y-m-d'))
                       ->first();
@@ -89,11 +105,9 @@ class AbsensiController extends Controller
             return redirect()->back()->with('error', 'Kamu sudah melakukan absen hari ini!');
         }
 
-        // 3. Tentukan status (Contoh: Batas jam 08:00)
         $jamSekarang = date('H:i');
         $status = ($jamSekarang > '08:00') ? 'Telat' : 'Hadir';
 
-        // 4. Simpan ke database
         Absensi::create([
             'karyawan_id' => $profil->id,
             'tanggal'     => date('Y-m-d'),

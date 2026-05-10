@@ -9,12 +9,38 @@ use App\Models\Gaji;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB; // Tambahkan ini untuk transaksi database
+use Illuminate\Support\Facades\DB;
 
 class KaryawanController extends Controller
 {
     /**
-     * DASHBOARD UNTUK ROLE KARYAWAN
+     * DASHBOARD ADMIN
+     */
+    public function dashboardAdmin()
+    {
+        $totalKaryawan = Karyawan::count();
+        $hadirHariIni = Absensi::whereDate('tanggal', date('Y-m-d'))->whereIn('status', ['Hadir', 'Telat'])->count();
+        $totalGaji = Gaji::where('status', 'Dibayar')->sum('total_gaji');
+        $gajiPending = Gaji::where('status', 'Pending')->count();
+        $karyawanTerbaru = Karyawan::latest()->take(5)->get();
+
+        return view('admin.dashboard', compact('totalKaryawan', 'hadirHariIni', 'totalGaji', 'gajiPending', 'karyawanTerbaru'));
+    }
+
+    /**
+     * DASHBOARD KABID
+     */
+    public function dashboardKabid()
+    {
+        $totalKaryawan = Karyawan::count();
+        $hadirHariIni = Absensi::whereDate('tanggal', date('Y-m-d'))->whereIn('status', ['Hadir', 'Telat'])->count();
+        $gajiPending = Gaji::where('status', 'Pending')->count();
+
+        return view('kabid.dashboard', compact('totalKaryawan', 'hadirHariIni', 'gajiPending'));
+    }
+
+    /**
+     * DASHBOARD KARYAWAN
      */
     public function dashboard()
     {
@@ -22,76 +48,77 @@ class KaryawanController extends Controller
         $profil = Karyawan::where('user_id', $user->id)->first();
 
         if (!$profil) {
-            return "Profil karyawan belum dibuat. Hubungi Admin.";
+            return "Profil karyawan belum ditemukan. Silakan hubungi Admin.";
         }
 
-        $sudahAbsen = Absensi::where('karyawan_id', $profil->id)
-                            ->whereDate('tanggal', date('Y-m-d'))
-                            ->first();
-
-        $riwayatGaji = Gaji::where('karyawan_id', $profil->id)
-                          ->latest()
-                          ->take(5)
-                          ->get();
+        $sudahAbsen = Absensi::where('karyawan_id', $profil->id)->whereDate('tanggal', date('Y-m-d'))->first();
+        $riwayatGaji = Gaji::where('karyawan_id', $profil->id)->latest()->take(5)->get();
 
         return view('karyawan.dashboard', compact('sudahAbsen', 'riwayatGaji', 'profil'));
     }
 
     /**
-     * HALAMAN INDEX ADMIN: Menampilkan Daftar Karyawan
+     * DATA KARYAWAN (Index Admin)
      */
     public function index()
     {
-        // Gunakan nama variabel $karyawans (jamak) agar lebih umum di view
         $karyawans = Karyawan::with('user')->latest()->get();
         return view('admin.karyawan', compact('karyawans'));
     }
 
     /**
-     * STORE DATA KARYAWAN + USER LOGIN
+     * STORE: Tambah Karyawan Baru
      */
     public function store(Request $request)
     {
         $request->validate([
-            'nik' => 'required|unique:karyawans,nik',
-            'nama_karyawan' => 'required',
-            'username' => 'required|unique:users,username',
-            'password' => 'required|min:6',
-            'kode_jabatan' => 'required',
+            'nama_karyawan' => 'required|string|max:255',
+            'nik'           => 'required|unique:karyawans,nik',
+            'jabatan'       => 'required', 
+            'username'      => 'required|string|unique:users,username', 
+            'password'      => 'required|min:6',
         ]);
 
-        // Gunakan Transaction agar jika salah satu gagal, data tidak tanggung masuknya
-        DB::transaction(function () use ($request) {
-            // 1. Buat User Login
+        DB::beginTransaction();
+        try {
+            // 1. Simpan ke tabel 'users' (Tanpa Email sesuai struktur DB kamu)
             $user = User::create([
-                'name' => $request->nama_karyawan,
+                'name'     => $request->nama_karyawan,
                 'username' => $request->username,
                 'password' => Hash::make($request->password),
-                'role' => 'karyawan',
+                'role'     => 'karyawan', 
             ]);
 
-            // 2. Buat Data Profil Karyawan
+            // 2. Simpan ke tabel 'karyawans' (Tanpa No_HP sesuai struktur DB kamu)
             Karyawan::create([
-                'nik' => $request->nik,
-                'user_id' => $user->id,
+                'user_id'       => $user->id,
                 'nama_karyawan' => $request->nama_karyawan,
-                'alamat' => $request->alamat,
-                'kode_jabatan' => $request->kode_jabatan,
-                'tahun_lahir' => $request->tahun_lahir,
+                'nik'           => $request->nik,
+                'kode_jabatan'  => $request->jabatan, 
+                'alamat'        => $request->alamat,
             ]);
-        });
 
-        return redirect()->route('admin.karyawan')->with('success', 'Data Karyawan berhasil ditambah!');
+            DB::commit();
+            return redirect()->back()->with('success', 'Karyawan berhasil ditambahkan!');
+        } catch (\Exception $e) {
+            DB::rollback();
+            return redirect()->back()->with('error', 'Gagal menambah karyawan: ' . $e->getMessage());
+        }
     }
 
+    /**
+     * DESTROY: Hapus Karyawan
+     */
     public function destroy($id)
     {
         $karyawan = Karyawan::findOrFail($id);
         
-        // Hapus usernya juga
-        User::where('id', $karyawan->user_id)->delete();
+        if ($karyawan->user_id) {
+            User::where('id', $karyawan->user_id)->delete();
+        }
+        
         $karyawan->delete();
 
-        return redirect()->back()->with('success', 'Data Karyawan telah dihapus.');
+        return redirect()->back()->with('success', 'Data karyawan berhasil dihapus.');
     }
 }

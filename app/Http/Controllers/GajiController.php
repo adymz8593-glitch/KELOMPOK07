@@ -11,10 +11,11 @@ use Barryvdh\DomPDF\Facade\Pdf;
 class GajiController extends Controller
 {
     /**
-     * FUNGSI UNTUK ADMIN & KABID: Melihat Daftar Gaji
+     * FUNGSI UNTUK ADMIN: Melihat Daftar Gaji & Form Input
      */
     public function index()
     {
+        // Pastikan hanya admin yang bisa akses index ini
         $gajis = Gaji::with('karyawan')->latest()->get();
         $karyawans = Karyawan::all();
         
@@ -22,62 +23,79 @@ class GajiController extends Controller
     }
 
     /**
-     * FUNGSI STORE (ADMIN): Menyimpan gaji dengan status 'Pending'
+     * FUNGSI UNTUK KABID: Monitoring & ACC Gaji
+     */
+    public function indexKabid()
+    {
+        // Kabid melihat semua data gaji untuk melakukan validasi
+        $gajis = Gaji::with('karyawan')->latest()->get();
+        
+        return view('kabid.gaji', compact('gajis'));
+    }
+
+    /**
+     * FUNGSI STORE (ADMIN): Menyimpan gaji baru
      */
     public function store(Request $request)
     {
+        // 1. Validasi Input
         $request->validate([
             'karyawan_id' => 'required|exists:karyawans,id',
             'bulan'       => 'required',
             'tahun'       => 'required|numeric',
-            'gaji_pokok'  => 'required|numeric',
-            'tunjangan'   => 'nullable|numeric',
-            'potongan'    => 'nullable|numeric',
+            'gaji_pokok'  => 'required|numeric|min:0',
+            'tunjangan'   => 'nullable|numeric|min:0',
+            'potongan'    => 'nullable|numeric|min:0',
         ]);
 
+        // 2. Cek apakah gaji periode ini sudah pernah diinput (Double Input Protection)
         $cekGaji = Gaji::where('karyawan_id', $request->karyawan_id)
                        ->where('bulan', $request->bulan)
                        ->where('tahun', $request->tahun)
                        ->first();
 
         if ($cekGaji) {
-            return redirect()->back()->with('error', 'Gaji periode tersebut sudah pernah diinput!');
+            return redirect()->back()->with('error', 'Gaji karyawan tersebut untuk periode ' . $request->bulan . ' ' . $request->tahun . ' sudah ada!');
         }
 
-        $total = ($request->gaji_pokok + ($request->tunjangan ?? 0)) - ($request->potongan ?? 0);
+        // 3. Hitung Total Gaji
+        $gaji_pokok = $request->gaji_pokok;
+        $tunjangan  = $request->tunjangan ?? 0;
+        $potongan   = $request->potongan ?? 0;
+        $total      = ($gaji_pokok + $tunjangan) - $potongan;
 
+        // 4. Simpan ke Database
         Gaji::create([
             'karyawan_id' => $request->karyawan_id,
             'bulan'       => $request->bulan,
             'tahun'       => $request->tahun,
-            'gaji_pokok'  => $request->gaji_pokok,
-            'tunjangan'   => $request->tunjangan ?? 0,
-            'potongan'    => $request->potongan ?? 0,
+            'gaji_pokok'  => $gaji_pokok,
+            'tunjangan'   => $tunjangan,
+            'potongan'    => $potongan,
             'total_gaji'  => $total,
-            'status'      => 'Pending', // <--- Default status untuk menunggu ACC Kabid
+            'status'      => 'Pending', // Default selalu pending agar di-ACC Kabid
         ]);
 
-        return redirect()->back()->with('success', 'Data gaji berhasil dikirim untuk menunggu persetujuan Kabid!');
+        return redirect()->route('admin.gaji')->with('success', 'Data gaji berhasil disimpan! Menunggu persetujuan Kabid.');
     }
 
     /**
-     * FUNGSI ACC (KABID): Menyetujui Gaji
+     * FUNGSI ACC (KABID): Mengubah status menjadi Dibayar
      */
     public function accGaji($id)
     {
         $gaji = Gaji::findOrFail($id);
         
-        // Hanya ubah status jika masih Pending
         if ($gaji->status == 'Pending') {
             $gaji->update(['status' => 'Dibayar']);
-            return redirect()->back()->with('success', 'Gaji berhasil disetujui (ACC) oleh Kabid!');
+            return redirect()->back()->with('success', 'Gaji berhasil disetujui (ACC).');
         }
 
-        return redirect()->back()->with('error', 'Gaji sudah pernah diproses sebelumnya.');
+        return redirect()->back()->with('error', 'Gaji ini sudah diproses sebelumnya.');
     }
 
     /**
-     * FUNGSI DESTROY: Menghapus data gaji
+     * FUNGSI DESTROY (ADMIN): Menghapus data gaji
      */
     public function destroy($id)
     {
@@ -96,10 +114,10 @@ class GajiController extends Controller
         $profil = Karyawan::where('user_id', $user->id)->first();
 
         if (!$profil) {
-            return redirect()->route('karyawan.dashboard')->with('error', 'Profil data karyawan belum diatur.');
+            return redirect()->route('karyawan.dashboard')->with('error', 'Profil data karyawan tidak ditemukan.');
         }
 
-        // Karyawan hanya bisa melihat gaji yang sudah 'Dibayar' (sudah di-ACC Kabid)
+        // Karyawan hanya bisa melihat gaji yang sudah disetujui (Dibayar)
         $gajis = Gaji::where('karyawan_id', $profil->id)
                      ->where('status', 'Dibayar') 
                      ->latest()
@@ -109,15 +127,14 @@ class GajiController extends Controller
     }
 
     /**
-     * FUNGSI CETAK SLIP PDF
+     * FUNGSI CETAK SLIP PDF (Admin & Karyawan)
      */
     public function cetakPdf($id)
     {
         $gaji = Gaji::with('karyawan')->findOrFail($id);
         
-        // Validasi: Slip hanya bisa dicetak jika sudah di-ACC (Dibayar)
         if ($gaji->status != 'Dibayar') {
-            return redirect()->back()->with('error', 'Slip gaji belum bisa dicetak karena belum di-ACC Kabid.');
+            return redirect()->back()->with('error', 'Slip gaji belum bisa dicetak karena belum disetujui Kabid.');
         }
 
         $pdf = Pdf::loadView('admin.slip_gaji_pdf', compact('gaji'))->setPaper('a5', 'landscape');

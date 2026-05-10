@@ -11,16 +11,16 @@ class Karyawan extends Model
 
     protected $table = 'karyawans';
     
-    // Memberitahu Laravel bahwa kuncinya adalah 'id' (sudah benar)
     protected $primaryKey = 'id'; 
 
     protected $fillable = [
-        'nik', 
         'user_id', 
-        'kode_jabatan', 
+        'nik', 
         'nama_karyawan', 
+        'kode_jabatan', // Sudah sesuai dengan error SQLite tadi
+        'no_hp',        // Tambahkan ini agar nomor HP tersimpan
         'alamat', 
-        'tahun_lahir'
+        'tahun_lahir'   // Tetap ada tidak apa-apa jika di DB memang ada kolomnya
     ];
 
     /**
@@ -40,7 +40,7 @@ class Karyawan extends Model
     }
 
     /**
-     * Tambahkan relasi ke Absensi agar mudah ditarik datanya
+     * Relasi ke model Absensi
      */
     public function absensis()
     {

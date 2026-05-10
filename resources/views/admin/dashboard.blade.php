@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Admin - E-Payroll Premium</title>
+    <title>Dashboard - E-Payroll Premium</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     
     <style>
@@ -90,8 +90,8 @@
 
         .bg-indigo-light { background: #eef2ff; color: #4f46e5; }
         .bg-emerald-light { background: #ecfdf5; color: #10b981; }
-        .bg-amber-light { background: #fffbeb; color: #f59e0b; }
         .bg-rose-light { background: #fff1f2; color: #f43f5e; }
+        .bg-amber-light { background: #fffbeb; color: #f59e0b; }
 
         /* Welcome Section */
         .welcome-banner {
@@ -106,6 +106,9 @@
 
         .welcome-banner h1 { font-weight: 700; font-size: 1.75rem; }
         .welcome-banner p { opacity: 0.8; margin-bottom: 0; }
+
+        /* Badge Custom */
+        .badge-soft-success { background-color: #dcfce7; color: #15803d; }
     </style>
 </head>
 <body>
@@ -115,18 +118,28 @@
         <i class="bi bi-wallet2 me-2 text-primary"></i> E-Payroll
     </a>
     
-    <div class="px-4 mb-2 text-uppercase fw-bold" style="font-size: 0.7rem; color: #64748b; letter-spacing: 1px;">Admin Panel</div>
+    <div class="px-4 mb-2 text-uppercase fw-bold" style="font-size: 0.7rem; color: #64748b; letter-spacing: 1px;">
+        {{ Auth::user()->role == 'admin' ? 'Admin Panel' : 'Kabid Panel' }}
+    </div>
+
     <nav>
-        <a href="{{ route('admin.dashboard') }}" class="nav-link active">
+        {{-- Dashboard Link (Dinamis) --}}
+        @php $dashboardRoute = Auth::user()->role == 'admin' ? 'admin.dashboard' : 'kabid.dashboard'; @endphp
+        <a href="{{ route($dashboardRoute) }}" class="nav-link {{ Request::routeIs($dashboardRoute) ? 'active' : '' }}">
             <i class="bi bi-grid-1x2-fill"></i> Dashboard
         </a>
-        <a href="{{ route('admin.karyawan') }}" class="nav-link">
+
+        @if(Auth::user()->role == 'admin')
+        <a href="{{ route('admin.karyawan') }}" class="nav-link {{ Request::routeIs('admin.karyawan') ? 'active' : '' }}">
             <i class="bi bi-people-fill"></i> Data Karyawan
         </a>
-        <a href="{{ route('admin.absensi') }}" class="nav-link">
+        @endif
+
+        <a href="{{ Auth::user()->role == 'admin' ? route('admin.absensi') : route('kabid.absensi') }}" class="nav-link {{ Request::is('*/absensi*') ? 'active' : '' }}">
             <i class="bi bi-calendar2-check-fill"></i> Rekap Absensi
         </a>
-        <a href="{{ route('admin.gaji') }}" class="nav-link">
+
+        <a href="{{ Auth::user()->role == 'admin' ? route('admin.gaji') : route('kabid.gaji') }}" class="nav-link {{ Request::is('*/gaji*') ? 'active' : '' }}">
             <i class="bi bi-cash-stack"></i> Kelola Gaji
         </a>
     </nav>
@@ -145,35 +158,48 @@
     
     <div class="welcome-banner shadow-sm">
         <h1>Halo, {{ Auth::user()->name }}! 👋</h1>
-        <p>Selamat datang di sistem E-Payroll. Semua data di bawah ini diperbarui secara otomatis dari database.</p>
+        <p>Anda login sebagai <strong>{{ strtoupper(Auth::user()->role) }}</strong>. Berikut ringkasan sistem hari ini.</p>
     </div>
 
     <div class="row g-4 mb-4">
+        {{-- Total Karyawan --}}
         <div class="col-md-4">
             <div class="stat-card">
                 <div class="icon-box bg-indigo-light">
                     <i class="bi bi-people"></i>
                 </div>
-                <h6 class="text-muted mb-1">Total Karyawan</h6>
-                <h3 class="fw-bold mb-0">{{ $totalKaryawan }} Orang</h3>
+                <h6 class="text-muted mb-1 small text-uppercase fw-bold">Total Karyawan</h6>
+                <h3 class="fw-bold mb-0">{{ number_format($totalKaryawan, 0, ',', '.') }} <span class="fs-6 fw-normal text-muted">Orang</span></h3>
             </div>
         </div>
+
+        {{-- Hadir Hari Ini --}}
         <div class="col-md-4">
             <div class="stat-card">
                 <div class="icon-box bg-emerald-light">
                     <i class="bi bi-check2-circle"></i>
                 </div>
-                <h6 class="text-muted mb-1">Hadir Hari Ini</h6>
-                <h3 class="fw-bold mb-0">{{ $hadirHariIni }} Orang</h3>
+                <h6 class="text-muted mb-1 small text-uppercase fw-bold">Hadir Hari Ini</h6>
+                <h3 class="fw-bold mb-0">{{ $hadirHariIni }} <span class="fs-6 fw-normal text-muted">Orang</span></h3>
             </div>
         </div>
+
+        {{-- Angka Finansial/Persetujuan --}}
         <div class="col-md-4">
             <div class="stat-card">
-                <div class="icon-box bg-rose-light">
-                    <i class="bi bi-cash-coin"></i>
-                </div>
-                <h6 class="text-muted mb-1">Total Pengeluaran Gaji</h6>
-                <h3 class="fw-bold mb-0">Rp {{ number_format($totalGaji, 0, ',', '.') }}</h3>
+                @if(Auth::user()->role == 'admin')
+                    <div class="icon-box bg-rose-light">
+                        <i class="bi bi-cash-coin"></i>
+                    </div>
+                    <h6 class="text-muted mb-1 small text-uppercase fw-bold">Total Pengeluaran Gaji</h6>
+                    <h3 class="fw-bold mb-0">Rp {{ number_format($totalGaji, 0, ',', '.') }}</h3>
+                @else
+                    <div class="icon-box bg-amber-light">
+                        <i class="bi bi-hourglass-split"></i>
+                    </div>
+                    <h6 class="text-muted mb-1 small text-uppercase fw-bold">Menunggu Validasi</h6>
+                    <h3 class="fw-bold mb-0">{{ $gajiPending ?? 0 }} <span class="fs-6 fw-normal text-muted">Data</span></h3>
+                @endif
             </div>
         </div>
     </div>
@@ -182,33 +208,57 @@
         <div class="col-lg-12">
             <div class="card border-0 shadow-sm p-4" style="border-radius: 20px;">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h5 class="fw-bold mb-0">Karyawan Baru Terdaftar</h5>
-                    <a href="{{ route('admin.karyawan') }}" class="btn btn-sm btn-light border text-primary fw-bold">Kelola Semua</a>
+                    <div>
+                        <h5 class="fw-bold mb-0">Karyawan Baru Terdaftar</h5>
+                        <p class="text-muted small mb-0">Daftar 5 anggota tim terbaru yang bergabung.</p>
+                    </div>
+                    @if(Auth::user()->role == 'admin')
+                        <a href="{{ route('admin.karyawan') }}" class="btn btn-sm btn-light border text-primary fw-bold px-3 py-2">Kelola Data</a>
+                    @endif
                 </div>
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light">
+                        <thead class="bg-light">
                             <tr>
-                                <th class="border-0">Nama</th>
+                                <th class="border-0 px-3 py-3">Nama Lengkap</th>
                                 <th class="border-0">Jabatan</th>
-                                <th class="border-0">NIK</th>
-                                <th class="border-0">Tanggal Daftar</th>
+                                <th class="border-0 text-center">Status Akun</th>
+                                <th class="border-0 text-end px-3">Terdaftar Pada</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse($karyawanTerbaru as $k)
                             <tr>
-                                <td>
-                                    <img src="https://ui-avatars.com/api/?name={{ urlencode($k->nama) }}&background=4f46e5&color=fff" class="rounded-circle me-2" width="30"> 
-                                    {{ $k->nama }}
+                                <td class="px-3">
+                                    <div class="d-flex align-items-center">
+                                        <img src="https://ui-avatars.com/api/?name={{ urlencode($k->nama_karyawan) }}&background=4f46e5&color=fff" class="rounded-circle me-3" width="38"> 
+                                        <div>
+                                            <div class="fw-bold text-dark">{{ $k->nama_karyawan }}</div>
+                                            <small class="text-muted">NIK: {{ $k->nik }}</small>
+                                        </div>
+                                    </div>
                                 </td>
-                                <td><span class="badge bg-light text-dark border px-3 py-2">{{ $k->jabatan }}</span></td>
-                                <td class="text-muted">#{{ $k->nik }}</td>
-                                <td class="small text-muted">{{ $k->created_at->format('d M Y') }}</td>
+                                <td>
+                                    {{-- Cek apakah kolomnya kode_jabatan atau jabatan --}}
+                                    <span class="badge bg-light text-dark border px-3 py-2">
+                                        {{ $k->kode_jabatan ?? $k->jabatan }}
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge badge-soft-success border border-success-subtle px-3 py-2">
+                                        <i class="bi bi-shield-check me-1"></i> Aktif
+                                    </span>
+                                </td>
+                                <td class="text-end text-muted small px-3">
+                                    {{ $k->created_at->translatedFormat('d M Y') }}
+                                </td>
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="4" class="text-center py-4 text-muted">Belum ada data karyawan.</td>
+                                <td colspan="4" class="text-center py-5 text-muted">
+                                    <i class="bi bi-inbox fs-1 d-block mb-2 opacity-25"></i>
+                                    Belum ada data karyawan terbaru.
+                                </td>
                             </tr>
                             @endforelse
                         </tbody>

@@ -2,17 +2,18 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory; // 1. Pastikan ini ada
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable; // 2. Tambahkan HasFactory di sini
+    use HasFactory, Notifiable;
 
     protected $fillable = [
         'name',
-        'username',
+        'username', // Wajib ada agar tidak error NOT NULL
+        'email',    // Tambahkan jika di database ada kolom email
         'password',
         'role',
     ];

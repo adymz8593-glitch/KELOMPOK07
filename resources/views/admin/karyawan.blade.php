@@ -124,6 +124,7 @@
                                 <option value="Staff">Staff</option>
                                 <option value="Admin">Admin</option>
                                 <option value="Kabid">Kabid</option>
+                                <option value="Kasi">teknisi</option>
                             </select>
                         </div>
                         <div class="col-md-6">

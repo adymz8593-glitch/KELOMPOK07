@@ -26,11 +26,12 @@ Route::middleware(['auth'])->group(function () {
         // Kelola Data Karyawan
         Route::get('/karyawan', [KaryawanController::class, 'index'])->name('admin.karyawan');
         Route::post('/karyawan/store', [KaryawanController::class, 'store'])->name('admin.karyawan.store');
-        Route::put('/karyawan/{id}', [KaryawanController::class, 'update'])->name('admin.karyawan.update'); // <-- BERHASIL DITAMBAHKAN
+        Route::put('/karyawan/{id}', [KaryawanController::class, 'update'])->name('admin.karyawan.update');
         Route::delete('/karyawan/{id}', [KaryawanController::class, 'destroy'])->name('admin.karyawan.destroy');
 
         // Rekap Absensi Admin
-        Route::get('/absensi', [AbsensiController::class, 'index'])->name('admin.absensi');
+        // 🌟 FIX: Diubah ke 'indexAdmin' agar pas dengan method di AbsensiController terbaru
+        Route::get('/absensi', [AbsensiController::class, 'indexAdmin'])->name('admin.absensi');
         Route::post('/absensi/store', [AbsensiController::class, 'store'])->name('admin.absensi.store');
 
         // Kelola Gaji Admin
@@ -43,9 +44,14 @@ Route::middleware(['auth'])->group(function () {
     // --- AREA KARYAWAN ---
     Route::prefix('karyawan')->group(function () {
         Route::get('/dashboard', [KaryawanController::class, 'dashboard'])->name('karyawan.dashboard');
-        Route::get('/absensi', [AbsensiController::class, 'indexKaryawan'])->name('karyawan.absensi');
         Route::get('/gaji', [GajiController::class, 'indexKaryawan'])->name('karyawan.gaji');
-        Route::post('/absen', [AbsensiController::class, 'storeMandiri'])->name('karyawan.absen');
+        
+        // Rute halaman absensi pribadi karyawan (Memanggil method 'index')
+        Route::get('/absensi', [AbsensiController::class, 'index'])->name('karyawan.absensi');
+        
+        // Rute aksi tombol Masuk & Pulang terpisah
+        Route::post('/absensi/masuk', [AbsensiController::class, 'absenMasuk'])->name('karyawan.absen.masuk');
+        Route::post('/absensi/pulang', [AbsensiController::class, 'absenPulang'])->name('karyawan.absen.pulang');
     });
 
     // --- AREA KABID ---

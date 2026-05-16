@@ -6,13 +6,14 @@ use App\Models\Absensi;
 use App\Models\Karyawan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon;
 
 class AbsensiController extends Controller
 {
     /**
      * FUNGSI UNTUK ADMIN: Melihat Rekap Absensi
      */
-    public function index(Request $request)
+    public function indexAdmin(Request $request)
     {
         $bulan = $request->get('bulan', date('m'));
         $tahun = $request->get('tahun', date('Y'));
@@ -24,7 +25,6 @@ class AbsensiController extends Controller
 
     /**
      * FUNGSI UNTUK KABID: Menangani route 'kabid.absensi'
-     * Ini fungsi yang dipanggil di web.php kamu
      */
     public function indexKabid(Request $request)
     {
@@ -38,7 +38,7 @@ class AbsensiController extends Controller
     }
 
     /**
-     * Helper Function: Agar tidak menulis logika rekap dua kali
+     * Helper Function: Agar tidak menulis logika rekap dua kali (Fix: Alpha)
      */
     private function getRekapData($bulan, $tahun)
     {
@@ -50,9 +50,9 @@ class AbsensiController extends Controller
 
             $hadir = $dataAbsensi->where('status', 'Hadir')->count();
             $telat = $dataAbsensi->where('status', 'Telat')->count();
-            $alpa  = $dataAbsensi->where('status', 'Alpa')->count();
+            $alpha = $dataAbsensi->where('status', 'Alpha')->count(); // FIX: Menggunakan 'Alpha' sesuai Enum DB
 
-            $potongan = ($alpa * 50000) + ($telat * 10000);
+            $potongan = ($alpha * 50000) + ($telat * 10000);
 
             return (object) [
                 'nama'     => $karyawan->nama_karyawan,
@@ -60,7 +60,7 @@ class AbsensiController extends Controller
                 'periode'  => date('F', mktime(0, 0, 0, (int)$bulan, 1)) . ' ' . $tahun,
                 'hadir'    => $hadir,
                 'telat'    => $telat,
-                'alpa'     => $alpa,
+                'alpha'    => $alpha,
                 'potongan' => $potongan
             ];
         });
@@ -69,7 +69,7 @@ class AbsensiController extends Controller
     /**
      * FUNGSI UNTUK KARYAWAN: Melihat Riwayat Absensi Pribadi
      */
-    public function indexKaryawan()
+    public function index()
     {
         $user = Auth::user();
         $profil = Karyawan::where('user_id', $user->id)->first();
@@ -78,17 +78,18 @@ class AbsensiController extends Controller
             return redirect()->route('karyawan.dashboard')->with('error', 'Profil tidak ditemukan.');
         }
 
-        $absensi = Absensi::where('karyawan_id', $profil->id)
+        // Variabel disamakan menjadi $riwayatAbsensi agar sinkron dengan file Blade
+        $riwayatAbsensi = Absensi::where('karyawan_id', $profil->id)
                     ->orderBy('tanggal', 'desc')
                     ->get();
 
-        return view('karyawan.absensi', compact('absensi', 'profil'));
+        return view('karyawan.absensi', compact('riwayatAbsensi', 'profil'));
     }
 
     /**
-     * FUNGSI UNTUK KARYAWAN: Klik Tombol Absen Mandiri
+     * FUNGSI UNTUK KARYAWAN: Klik Tombol Absen Masuk
      */
-    public function storeMandiri(Request $request)
+    public function absenMasuk(Request $request)
     {
         $user = Auth::user();
         $profil = Karyawan::where('user_id', $user->id)->first();
@@ -97,23 +98,68 @@ class AbsensiController extends Controller
             return redirect()->back()->with('error', 'Profil tidak ditemukan.');
         }
 
+        // Ambil waktu real-time Zona Waktu Indonesia Barat (WIB)
+        $waktuIndo = Carbon::now('Asia/Jakarta');
+        $hariIni = $waktuIndo->format('Y-m-d');
+        $jamSekarang = $waktuIndo->format('H:i:s');
+
+        // Cek double-absen masuk hari ini
         $cek = Absensi::where('karyawan_id', $profil->id)
-                      ->whereDate('tanggal', date('Y-m-d'))
+                      ->whereDate('tanggal', $hariIni)
                       ->first();
 
         if ($cek) {
-            return redirect()->back()->with('error', 'Kamu sudah melakukan absen hari ini!');
+            return redirect()->back()->with('error', 'Kamu sudah melakukan absen masuk hari ini!');
         }
 
-        $jamSekarang = date('H:i');
-        $status = ($jamSekarang > '08:00') ? 'Telat' : 'Hadir';
+        // Batas toleransi jam masuk (contoh: lewat jam 08:00 dianggap telat)
+        $status = ($waktuIndo->format('H:i') > '08:00') ? 'Telat' : 'Hadir';
 
         Absensi::create([
             'karyawan_id' => $profil->id,
-            'tanggal'     => date('Y-m-d'),
+            'tanggal'     => $hariIni,
+            'jam_masuk'   => $jamSekarang,
             'status'      => $status,
         ]);
 
-        return redirect()->back()->with('success', 'Berhasil! Kamu tercatat: ' . $status);
+        return redirect()->back()->with('success', 'Berhasil! Masuk pukul ' . $waktuIndo->format('H:i') . ' (' . $status . ')');
+    }
+
+    /**
+     * FUNGSI UNTUK KARYAWAN: Klik Tombol Absen Pulang
+     */
+    public function absenPulang(Request $request)
+    {
+        $user = Auth::user();
+        $profil = Karyawan::where('user_id', $user->id)->first();
+
+        if (!$profil) {
+            return redirect()->back()->with('error', 'Profil tidak ditemukan.');
+        }
+
+        // Ambil waktu real-time Zona Waktu Indonesia Barat (WIB)
+        $waktuIndo = Carbon::now('Asia/Jakarta');
+        $hariIni = $waktuIndo->format('Y-m-d');
+        $jamSekarang = $waktuIndo->format('H:i:s');
+
+        // Cari data absensi hari ini yang sudah terbuat saat absen masuk
+        $absen = Absensi::where('karyawan_id', $profil->id)
+                        ->whereDate('tanggal', $hariIni)
+                        ->first();
+
+        if (!$absen) {
+            return redirect()->back()->with('error', 'Kamu belum melakukan absen masuk hari ini!');
+        }
+
+        if ($absen->jam_pulang != null) {
+            return redirect()->back()->with('error', 'Kamu sudah melakukan absen pulang hari ini!');
+        }
+
+        // Update jam pulang di baris absensi hari ini
+        $absen->update([
+            'jam_pulang' => $jamSekarang,
+        ]);
+
+        return redirect()->back()->with('success', 'Berhasil! Pulang pukul ' . $waktuIndo->format('H:i'));
     }
 }

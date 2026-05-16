@@ -7,19 +7,17 @@
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h4 class="fw-bold">Absensi Saya</h4>
                 <div class="d-flex gap-2">
-                    {{-- Tombol Absen Masuk --}}
-                    <form action="{{ route('karyawan.absen') }}" method="POST">
+                    {{-- FIX: Mengarah ke rute absen masuk terpisah --}}
+                    <form action="{{ route('karyawan.absen.masuk') }}" method="POST">
                         @csrf
-                        <input type="hidden" name="tipe" value="masuk">
                         <button type="submit" class="btn btn-success px-4 shadow-sm">
                             <i class="bi bi-box-arrow-in-right me-2"></i> Absen Masuk
                         </button>
                     </form>
 
-                    {{-- Tombol Absen Pulang --}}
-                    <form action="{{ route('karyawan.absen') }}" method="POST">
+                    {{-- FIX: Mengarah ke rute absen pulang terpisah --}}
+                    <form action="{{ route('karyawan.absen.pulang') }}" method="POST">
                         @csrf
-                        <input type="hidden" name="tipe" value="pulang">
                         <button type="submit" class="btn btn-danger px-4 shadow-sm">
                             <i class="bi bi-box-arrow-left me-2"></i> Absen Pulang
                         </button>
@@ -59,19 +57,26 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse($absensi as $index => $a)
+                                {{-- FIX: Diubah ke $riwayatAbsensi agar cocok dengan controller --}}
+                                @forelse($riwayatAbsensi as $index => $a)
                                     <tr>
                                         <td class="ps-4">{{ $index + 1 }}</td>
                                         <td>{{ \Carbon\Carbon::parse($a->tanggal)->format('d/m/Y') }}</td>
-                                        <td>{{ $a->jam_masuk ?? '--:--' }}</td>
-                                        <td>{{ $a->jam_pulang ?? '--:--' }}</td>
+                                        
+                                        {{-- Memastikan format jam rapi jika sudah absen --}}
+                                        <td>{{ $a->jam_masuk ? \Carbon\Carbon::parse($a->jam_masuk)->format('H:i') : '--:--' }}</td>
+                                        <td>{{ $a->jam_pulang ? \Carbon\Carbon::parse($a->jam_pulang)->format('H:i') : '--:--' }}</td>
+                                        
                                         <td>
                                             @if($a->status == 'Hadir')
                                                 <span class="badge bg-success">Hadir</span>
                                             @elseif($a->status == 'Telat')
                                                 <span class="badge bg-warning text-dark">Telat</span>
+                                            @elseif($a->status == 'Izin' || $a->status == 'Sakit')
+                                                <span class="badge bg-info text-dark">{{ $a->status }}</span>
                                             @else
-                                                <span class="badge bg-danger">Alpa</span>
+                                                {{-- FIX: Mengikuti enum 'Alpha' database --}}
+                                                <span class="badge bg-danger">Alpha</span>
                                             @endif
                                         </td>
                                         <td>{{ $a->keterangan ?? '-' }}</td>

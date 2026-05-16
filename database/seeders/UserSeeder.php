@@ -5,7 +5,9 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\User;
 use App\Models\Karyawan;
+use App\Models\Absensi;
 use Illuminate\Support\Facades\Hash;
+use Carbon\Carbon;
 
 class UserSeeder extends Seeder
 {
@@ -18,11 +20,11 @@ class UserSeeder extends Seeder
         User::create([
             'name'     => 'Administrator',
             'username' => 'admin',
-            'password' => Hash::make('admin123'), // Silakan ganti password admin sesuai keinginanmu
+            'password' => Hash::make('admin123'),
             'role'     => 'admin',
         ]);
 
-        // 2. Membuat Akun Kabid Default (Jika ada)
+        // 2. Membuat Akun Kabid Default
         User::create([
             'name'     => 'Kepala Bidang',
             'username' => 'kabid',
@@ -30,7 +32,7 @@ class UserSeeder extends Seeder
             'role'     => 'kabid',
         ]);
 
-        // 3. Membuat Akun Karyawan Default (Contoh: Ibrizah)
+        // 3. Membuat Akun Karyawan Default (Ibrizah)
         $karyawan1 = User::create([
             'name'     => 'Ibrizah',
             'username' => 'ibrizah',
@@ -38,18 +40,17 @@ class UserSeeder extends Seeder
             'role'     => 'karyawan',
         ]);
 
-        // Hubungkan langsung ke tabel karyawans dan masukkan No. HP barunya
-        Karyawan::create([
+        $profilIbrizah = Karyawan::create([
             'user_id'       => $karyawan1->id,
             'nik'           => '3201012345678901',
             'nama_karyawan' => 'Ibrizah',
             'kode_jabatan'  => 'Staff',
-            'no_hp'         => '081234567890', // 🌟 Kolom baru sekarang langsung terisi lewat seeder
+            'no_hp'         => '081234567890',
             'alamat'        => 'Jl. Merdeka No. 10',
             'tahun_lahir'   => 2000
         ]);
 
-        // 4. Membuat Akun Karyawan Default Kedua (Contoh: Adiba)
+        // 4. Membuat Akun Karyawan Default Kedua (Adiba)
         $karyawan2 = User::create([
             'name'     => 'Adiba',
             'username' => 'adiba',
@@ -57,14 +58,62 @@ class UserSeeder extends Seeder
             'role'     => 'karyawan',
         ]);
 
-        Karyawan::create([
+        $profilAdiba = Karyawan::create([
             'user_id'       => $karyawan2->id,
             'nik'           => '3201012345678902',
             'nama_karyawan' => 'Adiba',
             'kode_jabatan'  => 'Manager',
-            'no_hp'         => '085712345678', // 🌟 Kolom baru terisi
+            'no_hp'         => '085712345678',
             'alamat'        => 'Jl. Sudirman No. 5',
             'tahun_lahir'   => 1998
+        ]);
+
+        // ============================================================
+        // 🌟 TAMBAHAN AUTOMATIS: DUMMY DATA ABSENSI BULAN INI
+        // ============================================================
+        $bulanIni = Carbon::now()->format('Y-m');
+
+        // Dummy Absen untuk Ibrizah (Contoh: Hadir Tepat Waktu, Telat, Alpha)
+        Absensi::create([
+            'karyawan_id' => $profilIbrizah->id,
+            'tanggal'     => $bulanIni . '-11',
+            'jam_masuk'   => '07:45:00',
+            'jam_pulang'  => '16:00:00',
+            'status'      => 'Hadir'
+        ]);
+
+        Absensi::create([
+            'karyawan_id' => $profilIbrizah->id,
+            'tanggal'     => $bulanIni . '-12',
+            'jam_masuk'   => '08:15:00', // Lewat jam 08:00 -> Potongan Rp 10.000
+            'jam_pulang'  => '16:00:00',
+            'status'      => 'Telat'
+        ]);
+
+        Absency::create([
+            'karyawan_id' => $profilIbrizah->id,
+            'tanggal'     => $bulanIni . '-13',
+            'jam_masuk'   => null,
+            'jam_pulang'  => null,
+            'status'      => 'Alpha' // Potongan Rp 50.000
+        ]);
+
+
+        // Dummy Absen untuk Adiba (Contoh: Rajin Hadir Semua)
+        Absensi::create([
+            'karyawan_id' => $profilAdiba->id,
+            'tanggal'     => $bulanIni . '-11',
+            'jam_masuk'   => '07:50:00',
+            'jam_pulang'  => '16:00:00',
+            'status'      => 'Hadir'
+        ]);
+
+        Absensi::create([
+            'karyawan_id' => $profilAdiba->id,
+            'tanggal'     => $bulanIni . '-12',
+            'jam_masuk'   => '07:30:00',
+            'jam_pulang'  => '16:05:00',
+            'status'      => 'Hadir'
         ]);
     }
 }

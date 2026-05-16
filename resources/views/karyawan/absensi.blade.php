@@ -7,7 +7,7 @@
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h4 class="fw-bold">Absensi Saya</h4>
                 <div class="d-flex gap-2">
-                    {{-- FIX: Mengarah ke rute absen masuk terpisah --}}
+                    {{-- Rute absen masuk --}}
                     <form action="{{ route('karyawan.absen.masuk') }}" method="POST">
                         @csrf
                         <button type="submit" class="btn btn-success px-4 shadow-sm">
@@ -15,7 +15,7 @@
                         </button>
                     </form>
 
-                    {{-- FIX: Mengarah ke rute absen pulang terpisah --}}
+                    {{-- Rute absen pulang --}}
                     <form action="{{ route('karyawan.absen.pulang') }}" method="POST">
                         @csrf
                         <button type="submit" class="btn btn-danger px-4 shadow-sm">
@@ -57,13 +57,11 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {{-- FIX: Diubah ke $riwayatAbsensi agar cocok dengan controller --}}
                                 @forelse($riwayatAbsensi as $index => $a)
                                     <tr>
                                         <td class="ps-4">{{ $index + 1 }}</td>
                                         <td>{{ \Carbon\Carbon::parse($a->tanggal)->format('d/m/Y') }}</td>
                                         
-                                        {{-- Memastikan format jam rapi jika sudah absen --}}
                                         <td>{{ $a->jam_masuk ? \Carbon\Carbon::parse($a->jam_masuk)->format('H:i') : '--:--' }}</td>
                                         <td>{{ $a->jam_pulang ? \Carbon\Carbon::parse($a->jam_pulang)->format('H:i') : '--:--' }}</td>
                                         
@@ -75,11 +73,40 @@
                                             @elseif($a->status == 'Izin' || $a->status == 'Sakit')
                                                 <span class="badge bg-info text-dark">{{ $a->status }}</span>
                                             @else
-                                                {{-- FIX: Mengikuti enum 'Alpha' database --}}
                                                 <span class="badge bg-danger">Alpha</span>
                                             @endif
                                         </td>
-                                        <td>{{ $a->keterangan ?? '-' }}</td>
+                                        
+                                        {{-- LOGIKA FORMAT JAM DAN MENIT SECARA DINAMIS --}}
+                                        <td>
+                                            @if($a->keterangan && !str_contains($a->keterangan, '-'))
+                                                {{ $a->keterangan }}
+                                            @else
+                                                @if($a->status == 'Telat' && $a->jam_masuk)
+                                                    @php
+                                                        $jamMasuk = \Carbon\Carbon::parse($a->jam_masuk);
+                                                        $batasMasuk = \Carbon\Carbon::parse($a->tanggal . ' 08:00:00');
+                                                        
+                                                        // Hitung total menit abs (agar tidak minus)
+                                                        $totalMenit = abs($jamMasuk->diffInMinutes($batasMasuk));
+                                                        
+                                                        // Konversi ke jam dan sisa menit
+                                                        $jam = floor($totalMenit / 60);
+                                                        $menit = $totalMenit % 60;
+                                                    @endphp
+
+                                                    @if($jam > 0)
+                                                        Terlambat {{ $jam }} Jam {{ $menit }} Menit
+                                                    @else
+                                                        Terlambat {{ $menit }} Menit
+                                                    @endif
+                                                @elseif($a->status == 'Hadir')
+                                                    Tepat Waktu
+                                                @else
+                                                    -
+                                                @endif
+                                            @endif
+                                        </td>
                                     </tr>
                                 @empty
                                     <tr>

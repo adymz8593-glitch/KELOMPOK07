@@ -125,7 +125,8 @@
                         </td>
                         <td class="text-center fw-bold text-success">{{ $r->hadir }} Hari</td>
                         <td class="text-center fw-bold text-warning">{{ $r->telat }}</td>
-                        <td class="text-center fw-bold text-danger">{{ $r->alpa }}</td>
+                        {{-- FIX: Mengubah $r->alpa menjadi $r->alpha agar tidak Error 500 --}}
+                        <td class="text-center fw-bold text-danger">{{ $r->alpha }}</td>
                         <td class="text-end px-4 fw-bold text-danger">
                             Rp {{ number_format($r->potongan, 0, ',', '.') }}
                         </td>

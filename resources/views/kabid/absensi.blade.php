@@ -11,13 +11,28 @@
         :root { --primary: #4f46e5; --sidebar-bg: #1e293b; --bg-body: #f4f7f6; }
         body { background-color: var(--bg-body); font-family: 'Inter', sans-serif; }
         
-        /* Sidebar Styling */
-        .sidebar { height: 100vh; background: var(--sidebar-bg); color: white; position: fixed; width: 260px; padding: 20px 0; z-index: 100; }
+        /* Sidebar Styling (Diubah ke d-flex untuk mengunci posisi logout di bawah) */
+        .sidebar { 
+            height: 100vh; 
+            background: var(--sidebar-bg); 
+            color: white; 
+            position: fixed; 
+            width: 260px; 
+            padding: 20px 0; 
+            z-index: 100; 
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
         .sidebar-brand { padding: 0 25px 30px; font-size: 1.5rem; font-weight: 700; display: flex; align-items: center; color: white; text-decoration: none; }
         .nav-link { color: #94a3b8; padding: 12px 25px; display: flex; align-items: center; text-decoration: none; margin: 4px 15px; border-radius: 10px; transition: 0.3s; }
         .nav-link:hover { color: white; background: rgba(255,255,255,0.05); }
         .nav-link.active { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3); }
         
+        /* Logout Button Style */
+        .text-danger-soft { color: #f43f5e; opacity: 0.85; }
+        .text-danger-soft:hover { background: rgba(244, 63, 94, 0.1) !important; color: #f43f5e !important; opacity: 1; }
+
         /* Main Content */
         .main-content { margin-left: 260px; padding: 40px; }
         .card { border-radius: 20px; border: none; }
@@ -34,19 +49,32 @@
 <body>
 
 <div class="sidebar">
-    <a href="#" class="sidebar-brand"><i class="bi bi-wallet2 me-2 text-primary"></i> E-Payroll</a>
-    <div class="px-4 mb-2 text-uppercase fw-bold" style="font-size: 0.7rem; color: #64748b;">KABID PANEL</div>
-    <nav>
-        <a href="{{ route('kabid.dashboard') }}" class="nav-link {{ Request::routeIs('kabid.dashboard') ? 'active' : '' }}">
-            <i class="bi bi-grid-1x2-fill me-2"></i> Dashboard
+    {{-- BAGIAN ATAS: Menu Navigasi --}}
+    <div>
+        <a href="#" class="sidebar-brand"><i class="bi bi-wallet2 me-2 text-primary"></i> E-Payroll</a>
+        <div class="px-4 mb-2 text-uppercase fw-bold" style="font-size: 0.7rem; color: #64748b;">KABID PANEL</div>
+        <nav>
+            <a href="{{ route('kabid.dashboard') }}" class="nav-link {{ Request::routeIs('kabid.dashboard') ? 'active' : '' }}">
+                <i class="bi bi-grid-1x2-fill me-2"></i> Dashboard
+            </a>
+            <a href="{{ route('kabid.absensi') }}" class="nav-link {{ Request::routeIs('kabid.absensi') ? 'active' : '' }}">
+                <i class="bi bi-calendar2-check-fill me-2"></i> Rekap Absensi
+            </a>
+            <a href="{{ route('kabid.gaji') }}" class="nav-link {{ Request::routeIs('kabid.gaji') ? 'active' : '' }}">
+                <i class="bi bi-cash-stack me-2"></i> Kelola Gaji
+            </a>
+        </nav>
+    </div>
+
+    {{-- BAGIAN BAWAH: Tombol Keluar (Logout) --}}
+    <div class="pt-3 border-top border-secondary mx-3">
+        <a href="#" class="nav-link text-danger-soft fw-bold" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+            <i class="bi bi-box-arrow-left me-2"></i> Keluar
         </a>
-        <a href="{{ route('kabid.absensi') }}" class="nav-link {{ Request::routeIs('kabid.absensi') ? 'active' : '' }}">
-            <i class="bi bi-calendar2-check-fill me-2"></i> Rekap Absensi
-        </a>
-        <a href="{{ route('kabid.gaji') }}" class="nav-link {{ Request::routeIs('kabid.gaji') ? 'active' : '' }}">
-            <i class="bi bi-cash-stack me-2"></i> Kelola Gaji
-        </a>
-    </nav>
+        <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
+            @csrf
+        </form>
+    </div>
 </div>
 
 <div class="main-content">
@@ -125,7 +153,6 @@
                         </td>
                         <td class="text-center fw-bold text-success">{{ $r->hadir }} Hari</td>
                         <td class="text-center fw-bold text-warning">{{ $r->telat }}</td>
-                        {{-- FIX: Mengubah $r->alpa menjadi $r->alpha agar tidak Error 500 --}}
                         <td class="text-center fw-bold text-danger">{{ $r->alpha }}</td>
                         <td class="text-end px-4 fw-bold text-danger">
                             Rp {{ number_format($r->potongan, 0, ',', '.') }}

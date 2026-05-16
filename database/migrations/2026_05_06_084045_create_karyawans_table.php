@@ -22,6 +22,7 @@ return new class extends Migration
             $table->string('nik')->unique(); // NIK tetap unik, tapi bukan primary key
             $table->string('nama_karyawan');
             $table->string('kode_jabatan');
+            $table->string('no_hp')->nullable(); // 🌟 FIX: Kolom No. HP ditambahkan di sini
             $table->text('alamat')->nullable();
             $table->integer('tahun_lahir')->nullable();
             

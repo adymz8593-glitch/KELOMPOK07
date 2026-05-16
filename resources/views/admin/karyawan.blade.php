@@ -46,7 +46,7 @@
                     <th class="border-0">NIK</th>
                     <th class="border-0">No. HP</th>
                     <th class="border-0">Alamat</th>
-                    <th class="border-0 text-center">Aksi</th>
+                    <th class="border-0 text-center" style="width: 140px;">Aksi</th>
                 </tr>
             </thead>
             <tbody>
@@ -61,20 +61,96 @@
                             </div>
                         </div>
                     </td>
-                    <td><span class="badge bg-light text-primary border border-primary-subtle px-3 py-2" style="border-radius: 8px;">{{ $k->jabatan }}</span></td>
+                    <td>
+                        <span class="badge bg-light text-primary border border-primary-subtle px-3 py-2" style="border-radius: 8px;">
+                            {{ $k->kode_jabatan ?? 'Staff' }}
+                        </span>
+                    </td>
                     <td class="text-muted">#{{ $k->nik }}</td>
-                    <td class="text-muted">{{ $k->no_hp ?? '-' }}</td>
+                    
+                    {{-- FIX PERBAIKAN: Menggunakan Fallback Multi-kolom jika no_hp kosong di database --}}
+                    <td class="text-medium fw-medium text-dark">
+                        {{ $k->no_hp ?? $k->no_telp ?? $k->telepon ?? '-' }}
+                    </td>
+                    
                     <td class="text-muted">{{ Str::limit($k->alamat, 25) }}</td>
                     <td class="text-center">
-                        <form action="{{ route('admin.karyawan.destroy', $k->id) }}" method="POST">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="btn btn-sm btn-light text-danger border" style="border-radius: 8px;" onclick="return confirm('Hapus data ini dan akun loginnya?')">
-                                <i class="bi bi-trash"></i>
+                        <div class="d-flex justify-content-center gap-2">
+                            <button type="button" class="btn btn-sm btn-warning text-dark fw-bold px-2 py-1" style="border-radius: 6px; font-size: 0.8rem;" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#editKaryawanModal{{ $k->id }}">
+                                Edit
                             </button>
-                        </form>
+
+                            <form action="{{ route('admin.karyawan.destroy', $k->id) }}" method="POST" class="m-0">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-sm btn-danger text-white fw-bold px-2 py-1" style="border-radius: 6px; font-size: 0.8rem;" onclick="return confirm('Hapus data ini dan akun loginnya?')">
+                                    Hapus
+                                </button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
+
+                {{-- MODAL EDIT KARYAWAN --}}
+                <div class="modal fade" id="editKaryawanModal{{ $k->id }}" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-lg modal-dialog-centered">
+                        <div class="modal-content border-0 shadow" style="border-radius: 20px;">
+                            <div class="modal-header border-0 pt-4 px-4">
+                                <h5 class="modal-title fw-bold">Edit Data Karyawan</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <form action="{{ route('admin.karyawan.update', $k->id) }}" method="POST">
+                                @csrf
+                                @method('PUT')
+                                <div class="modal-body p-4">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold small text-muted text-uppercase">Nomor Induk Karyawan (NIK)</label>
+                                            <input type="text" name="nik" class="form-control bg-light border-0 py-2" value="{{ $k->nik }}" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold small text-muted text-uppercase">Nama Lengkap</label>
+                                            <input type="text" name="nama_karyawan" class="form-control bg-light border-0 py-2" value="{{ $k->nama_karyawan }}" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold small text-muted text-uppercase">Username (Untuk Login)</label>
+                                            <input type="text" name="username" class="form-control bg-light border-0 py-2" value="{{ $k->user->username ?? '' }}" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold small text-muted text-uppercase">Password Baru (Kosongkan jika tidak diubah)</label>
+                                            <input type="password" name="password" class="form-control bg-light border-0 py-2" placeholder="Masukkan password baru jika ingin ganti">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold small text-muted text-uppercase">Jabatan</label>
+                                            <select name="jabatan" class="form-select bg-light border-0 py-2" required>
+                                                <option value="Manager" {{ $k->kode_jabatan == 'Manager' ? 'selected' : '' }}>Manager</option>
+                                                <option value="Staff" {{ $k->kode_jabatan == 'Staff' ? 'selected' : '' }}>Staff</option>
+                                                <option value="Admin" {{ $k->kode_jabatan == 'Admin' ? 'selected' : '' }}>Admin</option>
+                                                <option value="Kabid" {{ $k->kode_jabatan == 'Kabid' ? 'selected' : '' }}>Kabid</option>
+                                                <option value="Teknisi" {{ $k->kode_jabatan == 'Teknisi' ? 'selected' : '' }}>Teknisi</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold small text-muted text-uppercase">No. HP (WhatsApp)</label>
+                                            {{-- FIX PERBAIKAN: Mengamankan value input edit dari database --}}
+                                            <input type="text" name="no_hp" class="form-control bg-light border-0 py-2" value="{{ $k->no_hp ?? $k->no_telp ?? '' }}">
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label fw-bold small text-muted text-uppercase">Alamat Lengkap</label>
+                                            <textarea name="alamat" class="form-control bg-light border-0" rows="2">{{ $k->alamat }}</textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer border-0 pb-4 px-4">
+                                    <button type="button" class="btn btn-light px-4 py-2" data-bs-dismiss="modal" style="border-radius: 10px;">Batal</button>
+                                    <button type="submit" class="btn btn-warning text-dark px-4 py-2 shadow-sm" style="border-radius: 10px;">Simpan Perubahan</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
                 @empty
                 <tr>
                     <td colspan="6" class="text-center py-5 text-muted">
@@ -124,7 +200,7 @@
                                 <option value="Staff">Staff</option>
                                 <option value="Admin">Admin</option>
                                 <option value="Kabid">Kabid</option>
-                                <option value="Kasi">teknisi</option>
+                                <option value="Teknisi">Teknisi</option>
                             </select>
                         </div>
                         <div class="col-md-6">

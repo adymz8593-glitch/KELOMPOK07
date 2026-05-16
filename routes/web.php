@@ -26,6 +26,7 @@ Route::middleware(['auth'])->group(function () {
         // Kelola Data Karyawan
         Route::get('/karyawan', [KaryawanController::class, 'index'])->name('admin.karyawan');
         Route::post('/karyawan/store', [KaryawanController::class, 'store'])->name('admin.karyawan.store');
+        Route::put('/karyawan/{id}', [KaryawanController::class, 'update'])->name('admin.karyawan.update'); // <-- BERHASIL DITAMBAHKAN
         Route::delete('/karyawan/{id}', [KaryawanController::class, 'destroy'])->name('admin.karyawan.destroy');
 
         // Rekap Absensi Admin
@@ -49,10 +50,10 @@ Route::middleware(['auth'])->group(function () {
 
     // --- AREA KABID ---
     Route::prefix('kabid')->group(function () {
-        // Dashboard Khusus Kabid (Ganti ke dashboardKabid agar view-nya dari folder kabid)
+        // Dashboard Khusus Kabid
         Route::get('/dashboard', [KaryawanController::class, 'dashboardKabid'])->name('kabid.dashboard');
 
-        // Monitoring Gaji & Absensi Khusus Kabid (Ganti fungsi agar me-return view folder kabid)
+        // Monitoring Gaji & Absensi Khusus Kabid
         Route::get('/gaji', [GajiController::class, 'indexKabid'])->name('kabid.gaji');
         Route::get('/absensi', [AbsensiController::class, 'indexKabid'])->name('kabid.absensi');
 

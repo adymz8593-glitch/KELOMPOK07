@@ -17,10 +17,10 @@ class Karyawan extends Model
         'user_id', 
         'nik', 
         'nama_karyawan', 
-        'kode_jabatan', // Sudah sesuai dengan error SQLite tadi
-        'no_hp',        // Tambahkan ini agar nomor HP tersimpan
+        'kode_jabatan', 
+        'no_hp',         // Memastikan mass-assignment no_hp aktif dan aman
         'alamat', 
-        'tahun_lahir'   // Tetap ada tidak apa-apa jika di DB memang ada kolomnya
+        'tahun_lahir'   
     ];
 
     /**

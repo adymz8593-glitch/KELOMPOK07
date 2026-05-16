@@ -77,11 +77,12 @@ class KaryawanController extends Controller
             'jabatan'       => 'required', 
             'username'      => 'required|string|unique:users,username', 
             'password'      => 'required|min:6',
+            'no_hp'         => 'nullable|string|max:20', // FIX: Ditambahkan ke validasi
         ]);
 
         DB::beginTransaction();
         try {
-            // 1. Simpan ke tabel 'users' (Tanpa Email sesuai struktur DB kamu)
+            // 1. Simpan ke tabel 'users'
             $user = User::create([
                 'name'     => $request->nama_karyawan,
                 'username' => $request->username,
@@ -89,12 +90,13 @@ class KaryawanController extends Controller
                 'role'     => 'karyawan', 
             ]);
 
-            // 2. Simpan ke tabel 'karyawans' (Tanpa No_HP sesuai struktur DB kamu)
+            // 2. Simpan ke tabel 'karyawans'
             Karyawan::create([
                 'user_id'       => $user->id,
                 'nama_karyawan' => $request->nama_karyawan,
                 'nik'           => $request->nik,
                 'kode_jabatan'  => $request->jabatan, 
+                'no_hp'         => $request->no_hp, // FIX: Sekarang disave ke database
                 'alamat'        => $request->alamat,
             ]);
 
@@ -103,6 +105,54 @@ class KaryawanController extends Controller
         } catch (\Exception $e) {
             DB::rollback();
             return redirect()->back()->with('error', 'Gagal menambah karyawan: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * UPDATE: Mengubah Data Karyawan & Akun User (Hanya Admin)
+     */
+    public function update(Request $request, $id)
+    {
+        $karyawan = Karyawan::findOrFail($id);
+        $user = User::findOrFail($karyawan->user_id);
+
+        $request->validate([
+            'nama_karyawan' => 'required|string|max:255',
+            'nik'           => 'required|unique:karyawans,nik,' . $karyawan->id,
+            'jabatan'       => 'required',
+            'username'      => 'required|string|unique:users,username,' . $user->id,
+            'password'      => 'nullable|min:6', 
+            'no_hp'         => 'nullable|string|max:20', // FIX: Ditambahkan ke validasi
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // 1. Update data User
+            $userData = [
+                'name'     => $request->nama_karyawan,
+                'username' => $request->username,
+            ];
+
+            if ($request->filled('password')) {
+                $userData['password'] = Hash::make($request->password);
+            }
+
+            $user->update($userData);
+
+            // 2. Update data Karyawan
+            $karyawan->update([
+                'nama_karyawan' => $request->nama_karyawan,
+                'nik'           => $request->nik,
+                'kode_jabatan'  => $request->jabatan,
+                'no_hp'         => $request->no_hp, // FIX: Sekarang diupdate ke database
+                'alamat'        => $request->alamat,
+            ]);
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Data karyawan berhasil diperbarui!');
+        } catch (\Exception $e) {
+            DB::rollback();
+            return redirect()->back()->with('error', 'Gagal memperbarui karyawan: ' . $e->getMessage());
         }
     }
 

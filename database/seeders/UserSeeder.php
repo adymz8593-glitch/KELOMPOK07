@@ -4,41 +4,67 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\User;
+use App\Models\Karyawan;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\DB;
 
 class UserSeeder extends Seeder
 {
+    /**
+     * Run the database seeds.
+     */
     public function run(): void
     {
-        // Matikan proteksi foreign key sementara (untuk sqlite/mysql)
-        DB::statement('PRAGMA foreign_keys = OFF'); 
-        
-        // Bersihkan data user lama
-        User::truncate();
-
-        // Akun Admin
+        // 1. Membuat Akun Admin Default
         User::create([
-            'name' => 'Administrator',
+            'name'     => 'Administrator',
             'username' => 'admin',
-            'password' => Hash::make('admin123'),
-            'role' => 'admin',
+            'password' => Hash::make('admin123'), // Silakan ganti password admin sesuai keinginanmu
+            'role'     => 'admin',
         ]);
 
-        // Akun Kabid
+        // 2. Membuat Akun Kabid Default (Jika ada)
         User::create([
-            'name' => 'Kepala Bidang',
+            'name'     => 'Kepala Bidang',
             'username' => 'kabid',
             'password' => Hash::make('kabid123'),
-            'role' => 'kabid',
+            'role'     => 'kabid',
         ]);
 
-        // Akun Karyawan
-        User::create([
-            'name' => 'Karyawan',
-            'username' => 'karyawan',
-            'password' => Hash::make('user123'),
-            'role' => 'karyawan',
+        // 3. Membuat Akun Karyawan Default (Contoh: Ibrizah)
+        $karyawan1 = User::create([
+            'name'     => 'Ibrizah',
+            'username' => 'ibrizah',
+            'password' => Hash::make('karyawan123'),
+            'role'     => 'karyawan',
+        ]);
+
+        // Hubungkan langsung ke tabel karyawans dan masukkan No. HP barunya
+        Karyawan::create([
+            'user_id'       => $karyawan1->id,
+            'nik'           => '3201012345678901',
+            'nama_karyawan' => 'Ibrizah',
+            'kode_jabatan'  => 'Staff',
+            'no_hp'         => '081234567890', // 🌟 Kolom baru sekarang langsung terisi lewat seeder
+            'alamat'        => 'Jl. Merdeka No. 10',
+            'tahun_lahir'   => 2000
+        ]);
+
+        // 4. Membuat Akun Karyawan Default Kedua (Contoh: Adiba)
+        $karyawan2 = User::create([
+            'name'     => 'Adiba',
+            'username' => 'adiba',
+            'password' => Hash::make('karyawan123'),
+            'role'     => 'karyawan',
+        ]);
+
+        Karyawan::create([
+            'user_id'       => $karyawan2->id,
+            'nik'           => '3201012345678902',
+            'nama_karyawan' => 'Adiba',
+            'kode_jabatan'  => 'Manager',
+            'no_hp'         => '085712345678', // 🌟 Kolom baru terisi
+            'alamat'        => 'Jl. Sudirman No. 5',
+            'tahun_lahir'   => 1998
         ]);
     }
 }

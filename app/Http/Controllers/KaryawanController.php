@@ -10,165 +10,183 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf; // Pastikan library dompdf sudah terinstall
 
 class KaryawanController extends Controller
 {
-    /**
-     * DASHBOARD ADMIN
-     */
-    public function dashboardAdmin()
+    private function getKaryawanIdsByRole($user)
     {
-        $totalKaryawan = Karyawan::count();
-        $hadirHariIni = Absensi::whereDate('tanggal', date('Y-m-d'))->whereIn('status', ['Hadir', 'Telat'])->count();
-        $totalGaji = Gaji::where('status', 'Dibayar')->sum('total_gaji');
-        $gajiPending = Gaji::where('status', 'Pending')->count();
-        $karyawanTerbaru = Karyawan::latest()->take(5)->get();
+        $kabidProfil = Karyawan::where('user_id', $user->id)->first();
+        
+        if (!$kabidProfil) return [];
 
-        return view('admin.dashboard', compact('totalKaryawan', 'hadirHariIni', 'totalGaji', 'gajiPending', 'karyawanTerbaru'));
+        $jabatanKabid = strtolower($kabidProfil->kode_jabatan);
+        
+        if (str_contains($jabatanKabid, 'keuangan')) {
+            $kataKunci = 'Keuangan';
+        } else {
+            $kataKunci = 'Admin'; 
+        }
+
+        return Karyawan::where('kode_jabatan', 'LIKE', '%' . $kataKunci . '%')
+                       ->where('id', '!=', $kabidProfil->id) 
+                       ->pluck('id')
+                       ->toArray();
     }
 
-    /**
-     * DASHBOARD KABID
-     */
+    // Fungsi Baru untuk Cetak Laporan PDF
+    public function cetakLaporan(Request $request)
+    {
+        // Sesuaikan query berdasarkan data yang ingin dicetak
+        $data = Gaji::with('karyawan')->latest()->get(); 
+        
+        $pdf = Pdf::loadView('admin.laporan_pdf', ['data' => $data]);
+        
+        // Langsung download file PDF
+        return $pdf->download('Laporan_Gaji_' . date('Y-m-d') . '.pdf');
+    }
+
+    public function index()
+    {
+        $user = Auth::user();
+        
+        if ($user->role === 'admin') {
+            $karyawans = Karyawan::with('user')->latest()->get();
+        } else {
+            $ids = $this->getKaryawanIdsByRole($user);
+            $karyawans = Karyawan::with('user')->whereIn('id', $ids)->latest()->get();
+        }
+        
+        return view('admin.karyawan', compact('karyawans'));
+    }
+
     public function dashboardKabid()
     {
-        $totalKaryawan = Karyawan::count();
-        $hadirHariIni = Absensi::whereDate('tanggal', date('Y-m-d'))->whereIn('status', ['Hadir', 'Telat'])->count();
-        $gajiPending = Gaji::where('status', 'Pending')->count();
+        $user = Auth::user();
+        $karyawanIds = $this->getKaryawanIdsByRole($user);
 
-        return view('kabid.dashboard', compact('totalKaryawan', 'hadirHariIni', 'gajiPending'));
+        if (empty($karyawanIds)) {
+            return view('kabid.dashboard', [
+                'totalKaryawan' => 0,
+                'gajiPending'   => 0,
+                'gajiTerakhir'  => collect([])
+            ]);
+        }
+
+        $totalKaryawan = Karyawan::whereIn('id', $karyawanIds)->count();
+        $gajiPending   = Gaji::whereIn('karyawan_id', $karyawanIds)->where('status', 'Pending')->count();
+        
+        $gajiTerakhir = Gaji::with('karyawan')
+                            ->whereIn('karyawan_id', $karyawanIds)
+                            ->orderBy('created_at', 'DESC')
+                            ->limit(5)
+                            ->get()
+                            ->map(function ($item) {
+                                $item->periode_tampil = $item->bulan . ' ' . $item->tahun;
+                                return $item;
+                            });
+
+        return view('kabid.dashboard', compact('totalKaryawan', 'gajiPending', 'gajiTerakhir'));
     }
 
-    /**
-     * DASHBOARD KARYAWAN
-     */
     public function dashboard()
     {
         $user = Auth::user();
         $profil = Karyawan::where('user_id', $user->id)->first();
-
-        if (!$profil) {
-            return "Profil karyawan belum ditemukan. Silakan hubungi Admin.";
-        }
-
+        if (!$profil) return redirect()->back()->with('error', 'Profil tidak ditemukan.');
+        
         $sudahAbsen = Absensi::where('karyawan_id', $profil->id)->whereDate('tanggal', date('Y-m-d'))->first();
         $riwayatGaji = Gaji::where('karyawan_id', $profil->id)->latest()->take(5)->get();
-
+        
         return view('karyawan.dashboard', compact('sudahAbsen', 'riwayatGaji', 'profil'));
     }
 
-    /**
-     * DATA KARYAWAN (Index Admin)
-     */
-    public function index()
+    public function dashboardAdmin()
     {
-        $karyawans = Karyawan::with('user')->latest()->get();
-        return view('admin.karyawan', compact('karyawans'));
+        $data = [
+            'totalKaryawan'  => Karyawan::count(),
+            'hadirHariIni'   => Absensi::whereDate('tanggal', date('Y-m-d'))->whereIn('status', ['Hadir', 'Telat'])->count(),
+            'totalGaji'      => Gaji::where('status', 'Disetujui')->sum('total_gaji'),
+            'gajiPending'    => Gaji::where('status', 'Pending')->count()
+        ];
+        
+        return view('admin.dashboard', $data);
     }
 
-    /**
-     * STORE: Tambah Karyawan Baru
-     */
     public function store(Request $request)
     {
         $request->validate([
-            'nama_karyawan' => 'required|string|max:255',
-            'nik'           => 'required|unique:karyawans,nik',
-            'jabatan'       => 'required', 
-            'username'      => 'required|string|unique:users,username', 
-            'password'      => 'required|min:6',
-            'no_hp'         => 'nullable|string|max:20', // FIX: Ditambahkan ke validasi
+            'nama_karyawan' => 'required',
+            'nik'           => 'required|unique:karyawans',
+            'jabatan'       => 'required',
+            'username'      => 'required|unique:users',
+            'password'      => 'required|min:6'
         ]);
 
-        DB::beginTransaction();
-        try {
-            // 1. Simpan ke tabel 'users'
+        DB::transaction(function () use ($request) {
             $user = User::create([
                 'name'     => $request->nama_karyawan,
                 'username' => $request->username,
                 'password' => Hash::make($request->password),
-                'role'     => 'karyawan', 
+                'role'     => 'karyawan'
             ]);
-
-            // 2. Simpan ke tabel 'karyawans'
+            
             Karyawan::create([
                 'user_id'       => $user->id,
                 'nama_karyawan' => $request->nama_karyawan,
                 'nik'           => $request->nik,
-                'kode_jabatan'  => $request->jabatan, 
-                'no_hp'         => $request->no_hp, // FIX: Sekarang disave ke database
-                'alamat'        => $request->alamat,
+                'kode_jabatan'  => $request->jabatan,
+                'no_hp'         => $request->no_hp,
+                'alamat'        => $request->alamat
             ]);
-
-            DB::commit();
-            return redirect()->back()->with('success', 'Karyawan berhasil ditambahkan!');
-        } catch (\Exception $e) {
-            DB::rollback();
-            return redirect()->back()->with('error', 'Gagal menambah karyawan: ' . $e->getMessage());
-        }
+        });
+        
+        return redirect()->back()->with('success', 'Data berhasil ditambahkan!');
     }
 
-    /**
-     * UPDATE: Mengubah Data Karyawan & Akun User (Hanya Admin)
-     */
     public function update(Request $request, $id)
     {
         $karyawan = Karyawan::findOrFail($id);
-        $user = User::findOrFail($karyawan->user_id);
-
         $request->validate([
-            'nama_karyawan' => 'required|string|max:255',
-            'nik'           => 'required|unique:karyawans,nik,' . $karyawan->id,
-            'jabatan'       => 'required',
-            'username'      => 'required|string|unique:users,username,' . $user->id,
-            'password'      => 'nullable|min:6', 
-            'no_hp'         => 'nullable|string|max:20', // FIX: Ditambahkan ke validasi
+            'nama_karyawan' => 'required',
+            'username'      => ['required', Rule::unique('users')->ignore($karyawan->user_id)]
         ]);
 
-        DB::beginTransaction();
-        try {
-            // 1. Update data User
-            $userData = [
-                'name'     => $request->nama_karyawan,
-                'username' => $request->username,
-            ];
-
-            if ($request->filled('password')) {
-                $userData['password'] = Hash::make($request->password);
-            }
-
-            $user->update($userData);
-
-            // 2. Update data Karyawan
+        DB::transaction(function () use ($request, $karyawan) {
             $karyawan->update([
-                'nama_karyawan' => $request->nama_karyawan,
-                'nik'           => $request->nik,
+                'nama_karyawan' => $request->nama_karyawan, 
+                'nik'           => $request->nik, 
                 'kode_jabatan'  => $request->jabatan,
-                'no_hp'         => $request->no_hp, // FIX: Sekarang diupdate ke database
-                'alamat'        => $request->alamat,
+                'no_hp'         => $request->no_hp,
+                'alamat'        => $request->alamat
             ]);
+            
+            if ($karyawan->user) {
+                $userData = [
+                    'username' => $request->username, 
+                    'name'     => $request->nama_karyawan
+                ];
 
-            DB::commit();
-            return redirect()->back()->with('success', 'Data karyawan berhasil diperbarui!');
-        } catch (\Exception $e) {
-            DB::rollback();
-            return redirect()->back()->with('error', 'Gagal memperbarui karyawan: ' . $e->getMessage());
-        }
+                if ($request->filled('password')) {
+                    $userData['password'] = Hash::make($request->password);
+                }
+
+                $karyawan->user->update($userData);
+            }
+        });
+        
+        return redirect()->back()->with('success', 'Data berhasil diperbarui!');
     }
 
-    /**
-     * DESTROY: Hapus Karyawan
-     */
     public function destroy($id)
     {
         $karyawan = Karyawan::findOrFail($id);
-        
-        if ($karyawan->user_id) {
-            User::where('id', $karyawan->user_id)->delete();
-        }
-        
-        $karyawan->delete();
-
-        return redirect()->back()->with('success', 'Data karyawan berhasil dihapus.');
+        DB::transaction(function () use ($karyawan) {
+            if ($karyawan->user) $karyawan->user->delete();
+            $karyawan->delete();
+        });
+        return redirect()->back()->with('success', 'Data berhasil dihapus!');
     }
 }

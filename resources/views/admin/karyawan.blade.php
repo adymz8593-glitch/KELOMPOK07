@@ -6,9 +6,11 @@
         <h2 class="fw-bold mb-0">Data Karyawan</h2>
         <p class="text-muted">Kelola informasi profil dan akun login karyawan.</p>
     </div>
-    <button type="button" class="btn btn-primary px-4 py-2" style="border-radius: 12px;" data-bs-toggle="modal" data-bs-target="#tambahKaryawanModal">
-        <i class="bi bi-plus-lg me-2"></i> Tambah Karyawan
-    </button>
+    @if(Auth::user()->role === 'admin')
+        <button type="button" class="btn btn-primary px-4 py-2" style="border-radius: 12px;" data-bs-toggle="modal" data-bs-target="#tambahKaryawanModal">
+            <i class="bi bi-plus-lg me-2"></i> Tambah Karyawan
+        </button>
+    @endif
 </div>
 
 {{-- Alert Sukses --}}
@@ -46,7 +48,9 @@
                     <th class="border-0">NIK</th>
                     <th class="border-0">No. HP</th>
                     <th class="border-0">Alamat</th>
-                    <th class="border-0 text-center" style="width: 140px;">Aksi</th>
+                    @if(Auth::user()->role === 'admin')
+                        <th class="border-0 text-center" style="width: 140px;">Aksi</th>
+                    @endif
                 </tr>
             </thead>
             <tbody>
@@ -67,95 +71,38 @@
                         </span>
                     </td>
                     <td class="text-muted">#{{ $k->nik }}</td>
-                    
-                    {{-- FIX PERBAIKAN: Menggunakan Fallback Multi-kolom jika no_hp kosong di database --}}
+                    {{-- DIPERBAIKI: Mengambil data langsung dari no_hp --}}
                     <td class="text-medium fw-medium text-dark">
-                        {{ $k->no_hp ?? $k->no_telp ?? $k->telepon ?? '-' }}
+                        {{ $k->no_hp ?? '-' }}
                     </td>
+                    {{-- DIPERBAIKI: Mengambil data langsung dari alamat --}}
+                    <td class="text-muted">{{ $k->alamat ? Str::limit($k->alamat, 25) : '-' }}</td>
                     
-                    <td class="text-muted">{{ Str::limit($k->alamat, 25) }}</td>
-                    <td class="text-center">
-                        <div class="d-flex justify-content-center gap-2">
-                            <button type="button" class="btn btn-sm btn-warning text-dark fw-bold px-2 py-1" style="border-radius: 6px; font-size: 0.8rem;" 
-                                    data-bs-toggle="modal" 
-                                    data-bs-target="#editKaryawanModal{{ $k->id }}">
-                                Edit
-                            </button>
-
-                            <form action="{{ route('admin.karyawan.destroy', $k->id) }}" method="POST" class="m-0">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="btn btn-sm btn-danger text-white fw-bold px-2 py-1" style="border-radius: 6px; font-size: 0.8rem;" onclick="return confirm('Hapus data ini dan akun loginnya?')">
-                                    Hapus
+                    @if(Auth::user()->role === 'admin')
+                        <td class="text-center">
+                            <div class="d-flex justify-content-center gap-2">
+                                <button type="button" class="btn btn-sm btn-warning text-dark fw-bold px-2 py-1" style="border-radius: 6px; font-size: 0.8rem;" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#editKaryawanModal{{ $k->id }}">
+                                    Edit
                                 </button>
-                            </form>
-                        </div>
-                    </td>
-                </tr>
 
-                {{-- MODAL EDIT KARYAWAN --}}
-                <div class="modal fade" id="editKaryawanModal{{ $k->id }}" tabindex="-1" aria-hidden="true">
-                    <div class="modal-dialog modal-lg modal-dialog-centered">
-                        <div class="modal-content border-0 shadow" style="border-radius: 20px;">
-                            <div class="modal-header border-0 pt-4 px-4">
-                                <h5 class="modal-title fw-bold">Edit Data Karyawan</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                <form action="{{ route('admin.karyawan.destroy', $k->id) }}" method="POST" class="m-0">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-sm btn-danger text-white fw-bold px-2 py-1" style="border-radius: 6px; font-size: 0.8rem;" onclick="return confirm('Hapus data ini dan akun loginnya?')">
+                                        Hapus
+                                    </button>
+                                </form>
                             </div>
-                            <form action="{{ route('admin.karyawan.update', $k->id) }}" method="POST">
-                                @csrf
-                                @method('PUT')
-                                <div class="modal-body p-4">
-                                    <div class="row g-3">
-                                        <div class="col-md-6">
-                                            <label class="form-label fw-bold small text-muted text-uppercase">Nomor Induk Karyawan (NIK)</label>
-                                            <input type="text" name="nik" class="form-control bg-light border-0 py-2" value="{{ $k->nik }}" required>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label fw-bold small text-muted text-uppercase">Nama Lengkap</label>
-                                            <input type="text" name="nama_karyawan" class="form-control bg-light border-0 py-2" value="{{ $k->nama_karyawan }}" required>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label fw-bold small text-muted text-uppercase">Username (Untuk Login)</label>
-                                            <input type="text" name="username" class="form-control bg-light border-0 py-2" value="{{ $k->user->username ?? '' }}" required>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label fw-bold small text-muted text-uppercase">Password Baru (Kosongkan jika tidak diubah)</label>
-                                            <input type="password" name="password" class="form-control bg-light border-0 py-2" placeholder="Masukkan password baru jika ingin ganti">
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label fw-bold small text-muted text-uppercase">Jabatan</label>
-                                            <select name="jabatan" class="form-select bg-light border-0 py-2" required>
-                                                <option value="Manager" {{ $k->kode_jabatan == 'Manager' ? 'selected' : '' }}>Manager</option>
-                                                <option value="Staff" {{ $k->kode_jabatan == 'Staff' ? 'selected' : '' }}>Staff</option>
-                                                <option value="Admin" {{ $k->kode_jabatan == 'Admin' ? 'selected' : '' }}>Admin</option>
-                                                <option value="Kabid" {{ $k->kode_jabatan == 'Kabid' ? 'selected' : '' }}>Kabid</option>
-                                                <option value="Teknisi" {{ $k->kode_jabatan == 'Teknisi' ? 'selected' : '' }}>Teknisi</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label fw-bold small text-muted text-uppercase">No. HP (WhatsApp)</label>
-                                            {{-- FIX PERBAIKAN: Mengamankan value input edit dari database --}}
-                                            <input type="text" name="no_hp" class="form-control bg-light border-0 py-2" value="{{ $k->no_hp ?? $k->no_telp ?? '' }}">
-                                        </div>
-                                        <div class="col-12">
-                                            <label class="form-label fw-bold small text-muted text-uppercase">Alamat Lengkap</label>
-                                            <textarea name="alamat" class="form-control bg-light border-0" rows="2">{{ $k->alamat }}</textarea>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="modal-footer border-0 pb-4 px-4">
-                                    <button type="button" class="btn btn-light px-4 py-2" data-bs-dismiss="modal" style="border-radius: 10px;">Batal</button>
-                                    <button type="submit" class="btn btn-warning text-dark px-4 py-2 shadow-sm" style="border-radius: 10px;">Simpan Perubahan</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
+                        </td>
+                    @endif
+                </tr>
                 @empty
                 <tr>
-                    <td colspan="6" class="text-center py-5 text-muted">
+                    <td colspan="{{ Auth::user()->role === 'admin' ? 6 : 5 }}" class="text-center py-5 text-muted">
                         <i class="bi bi-people mb-2 d-block" style="font-size: 2rem; opacity: 0.3;"></i>
-                        Belum ada data karyawan terdaftar.
+                        Belum ada data karyawan terdaftar di bagian ini.
                     </td>
                 </tr>
                 @endforelse
@@ -164,7 +111,90 @@
     </div>
 </div>
 
+{{-- MODAL EDIT KARYAWAN --}}
+@if(Auth::user()->role === 'admin')
+    @foreach($karyawans as $k)
+    <div class="modal fade" id="editKaryawanModal{{ $k->id }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow" style="border-radius: 20px;">
+                <div class="modal-header border-0 pt-4 px-4">
+                    <h5 class="modal-title fw-bold">Edit Data Karyawan</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="{{ route('admin.karyawan.update', $k->id) }}" method="POST">
+                    @csrf
+                    @method('PUT')
+                    <div class="modal-body p-4">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted text-uppercase">Nomor Induk Karyawan (NIK)</label>
+                                <input type="text" name="nik" class="form-control bg-light border-0 py-2" value="{{ $k->nik }}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted text-uppercase">Nama Lengkap</label>
+                                <input type="text" name="nama_karyawan" class="form-control bg-light border-0 py-2" value="{{ $k->nama_karyawan }}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text- sz-muted text-uppercase">Username (Untuk Login)</label>
+                                <input type="text" name="username" class="form-control bg-light border-0 py-2" value="{{ $k->user->username ?? '' }}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted text-uppercase">Password Baru (Kosongkan jika tidak diubah)</label>
+                                <input type="password" name="password" class="form-control bg-light border-0 py-2" placeholder="Masukkan password baru jika ingin ganti">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted text-uppercase">Jabatan / Bagian</label>
+                                <select name="jabatan" class="form-select bg-light border-0 py-2" required>
+                                    {{-- List jabatan tetap sama --}}
+                                    <optgroup label="Bidang Administrasi">
+                                        <option value="Teknisi Administrasi" {{ $k->kode_jabatan == 'Teknisi Administrasi' ? 'selected' : '' }}>Teknisi Administrasi</option>
+                                        <option value="Staf Administrasi" {{ $k->kode_jabatan == 'Staf Administrasi' ? 'selected' : '' }}>Staf Administrasi</option>
+                                        <option value="Guru Administrasi" {{ $k->kode_jabatan == 'Guru Administrasi' ? 'selected' : '' }}>Guru Administrasi</option>
+                                        <option value="Arsiparis Administrasi" {{ $k->kode_jabatan == 'Arsiparis Administrasi' ? 'selected' : '' }}>Arsiparis Administrasi</option>
+                                        <option value="Sekretaris Administrasi" {{ $k->kode_jabatan == 'Sekretaris Administrasi' ? 'selected' : '' }}>Sekretaris Administrasi</option>
+                                        <option value="Resepsionis Administrasi" {{ $k->kode_jabatan == 'Resepsionis Administrasi' ? 'selected' : '' }}>Resepsionis Administrasi</option>
+                                        <option value="Operator Administrasi" {{ $k->kode_jabatan == 'Operator Administrasi' ? 'selected' : '' }}>Operator Administrasi</option>
+                                        <option value="Data Entry Administrasi" {{ $k->kode_jabatan == 'Data Entry Administrasi' ? 'selected' : '' }}>Data Entry Administrasi</option>
+                                        <option value="Logistik Administrasi" {{ $k->kode_jabatan == 'Logistik Administrasi' ? 'selected' : '' }}>Logistik Administrasi</option>
+                                        <option value="Supervisor Administrasi" {{ $k->kode_jabatan == 'Supervisor Administrasi' ? 'selected' : '' }}>Supervisor Administrasi</option>
+                                    </optgroup>
+                                    <optgroup label="Bidang Keuangan">
+                                        <option value="Teknisi Keuangan" {{ $k->kode_jabatan == 'Teknisi Keuangan' ? 'selected' : '' }}>Teknisi Keuangan</option>
+                                        <option value="Staf Keuangan" {{ $k->kode_jabatan == 'Staf Keuangan' ? 'selected' : '' }}>Staf Keuangan</option>
+                                        <option value="Guru Keuangan" {{ $k->kode_jabatan == 'Guru Keuangan' ? 'selected' : '' }}>Guru Keuangan</option>
+                                        <option value="Akuntan Keuangan" {{ $k->kode_jabatan == 'Akuntan Keuangan' ? 'selected' : '' }}>Akuntan Keuangan</option>
+                                        <option value="Kasir Keuangan" {{ $k->kode_jabatan == 'Kasir Keuangan' ? 'selected' : '' }}>Kasir Keuangan</option>
+                                        <option value="Auditor Keuangan" {{ $k->kode_jabatan == 'Auditor Keuangan' ? 'selected' : '' }}>Auditor Keuangan</option>
+                                        <option value="Analis Keuangan" {{ $k->kode_jabatan == 'Analis Keuangan' ? 'selected' : '' }}>Analis Keuangan</option>
+                                        <option value="Perencana Keuangan" {{ $k->kode_jabatan == 'Perencana Keuangan' ? 'selected' : '' }}>Perencana Keuangan</option>
+                                        <option value="Admin Keuangan" {{ $k->kode_jabatan == 'Admin Keuangan' ? 'selected' : '' }}>Admin Keuangan</option>
+                                        <option value="Supervisor Keuangan" {{ $k->kode_jabatan == 'Supervisor Keuangan' ? 'selected' : '' }}>Supervisor Keuangan</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted text-uppercase">No. HP (WhatsApp)</label>
+                                <input type="text" name="no_hp" class="form-control bg-light border-0 py-2" value="{{ $k->no_hp }}">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-bold small text-muted text-uppercase">Alamat Lengkap</label>
+                                <textarea name="alamat" class="form-control bg-light border-0" rows="2">{{ $k->alamat }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 pb-4 px-4">
+                        <button type="button" class="btn btn-light px-4 py-2" data-bs-dismiss="modal" style="border-radius: 10px;">Batal</button>
+                        <button type="submit" class="btn btn-warning text-dark px-4 py-2 shadow-sm" style="border-radius: 10px;">Simpan Perubahan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    @endforeach
+@endif
+
 {{-- MODAL TAMBAH KARYAWAN --}}
+@if(Auth::user()->role === 'admin')
 <div class="modal fade" id="tambahKaryawanModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow" style="border-radius: 20px;">
@@ -193,14 +223,33 @@
                             <input type="password" name="password" class="form-control bg-light border-0 py-2" placeholder="Min. 6 karakter" required>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold small text-muted text-uppercase">Jabatan</label>
+                            <label class="form-label fw-bold small text-muted text-uppercase">Jabatan / Bagian</label>
                             <select name="jabatan" class="form-select bg-light border-0 py-2" required>
                                 <option value="" selected disabled>Pilih Jabatan</option>
-                                <option value="Manager">Manager</option>
-                                <option value="Staff">Staff</option>
-                                <option value="Admin">Admin</option>
-                                <option value="Kabid">Kabid</option>
-                                <option value="Teknisi">Teknisi</option>
+                                <optgroup label="Bidang Administrasi">
+                                    <option value="Teknisi Administrasi">Teknisi Administrasi</option>
+                                    <option value="Staf Administrasi">Staf Administrasi</option>
+                                    <option value="Guru Administrasi">Guru Administrasi</option>
+                                    <option value="Arsiparis Administrasi">Arsiparis Administrasi</option>
+                                    <option value="Sekretaris Administrasi">Sekretaris Administrasi</option>
+                                    <option value="Resepsionis Administrasi">Resepsionis Administrasi</option>
+                                    <option value="Operator Administrasi">Operator Administrasi</option>
+                                    <option value="Data Entry Administrasi">Data Entry Administrasi</option>
+                                    <option value="Logistik Administrasi">Logistik Administrasi</option>
+                                    <option value="Supervisor Administrasi">Supervisor Administrasi</option>
+                                </optgroup>
+                                <optgroup label="Bidang Keuangan">
+                                    <option value="Teknisi Keuangan">Teknisi Keuangan</option>
+                                    <option value="Staf Keuangan">Staf Keuangan</option>
+                                    <option value="Guru Keuangan">Guru Keuangan</option>
+                                    <option value="Akuntan Keuangan">Akuntan Keuangan</option>
+                                    <option value="Kasir Keuangan">Kasir Keuangan</option>
+                                    <option value="Auditor Keuangan">Auditor Keuangan</option>
+                                    <option value="Analis Keuangan">Analis Keuangan</option>
+                                    <option value="Perencana Keuangan">Perencana Keuangan</option>
+                                    <option value="Admin Keuangan">Admin Keuangan</option>
+                                    <option value="Supervisor Keuangan">Supervisor Keuangan</option>
+                                </optgroup>
                             </select>
                         </div>
                         <div class="col-md-6">
@@ -221,4 +270,5 @@
         </div>
     </div>
 </div>
+@endif
 @endsection

@@ -15,20 +15,50 @@ class GajiController extends Controller
      */
     public function index()
     {
-        // Pastikan hanya admin yang bisa akses index ini
+        // Admin utama berhak melihat seluruh riwayat pengajuan gaji staf
         $gajis = Gaji::with('karyawan')->latest()->get();
-        $karyawans = Karyawan::all();
+        
+        // Menampilkan list karyawan di drop-down form input (Sembunyikan akun kabid demi kerapian)
+        $karyawans = Karyawan::whereHas('user', function($query) {
+            $query->where('role', 'karyawan');
+        })->get();
         
         return view('admin.gaji', compact('gajis', 'karyawans'));
     }
 
     /**
-     * FUNGSI UNTUK KABID: Monitoring & ACC Gaji
+     * FUNGSI UNTUK KABID: Monitoring & ACC Gaji Berdasarkan Bidang Masing-Masing
+     * FIX: Menggunakan LIKE query agar mencakup 20 sub-jabatan baru di Administrasi & Keuangan
      */
     public function indexKabid()
     {
-        // Kabid melihat semua data gaji untuk melakukan validasi
-        $gajis = Gaji::with('karyawan')->latest()->get();
+        $user = Auth::user();
+
+        // 1. Ambil profil Kabid yang login di tabel karyawan untuk mendeteksi string jabatannya
+        $profilKabid = Karyawan::where('user_id', $user->id)->first();
+
+        if ($profilKabid) {
+            // Ambil nama jabatan dasar (misal dari 'Kabid Keuangan' ambil kata 'Keuangan')
+            // Atau jika isi jabatannya sudah spesifik seperti 'Staf Keuangan', kita cari kata kuncinya
+            $jabatanAsli = $profilKabid->kode_jabatan;
+            
+            // Tentukan kata kunci pemotong otomatis agar pencarian LIKE lebih aman
+            if (str_contains(strtolower($jabatanAsli), 'keuangan')) {
+                $divisiKataKunci = 'Keuangan';
+            } else {
+                $divisiKataKunci = 'Admin'; // Menjangkau 'Administrasi' maupun 'Admin'
+            }
+        } else {
+            // Fallback Cadangan: Jika relasi profil kosong, tebak berdasarkan nama role user
+            $divisiKataKunci = ($user->role === 'kabid_keuangan') ? 'Keuangan' : 'Admin';
+        }
+
+        // 2. Tarik semua data pengajuan gaji staf berdasarkan kecocokan kata kunci bidang (Kecuali Kabid itu sendiri)
+        $gajis = Gaji::with('karyawan')
+            ->whereHas('karyawan', function($query) use ($divisiKataKunci, $user) {
+                $query->where('kode_jabatan', 'LIKE', '%' . $divisiKataKunci . '%')
+                      ->where('user_id', '!=', $user->id);
+            })->latest()->get();
         
         return view('kabid.gaji', compact('gajis'));
     }
@@ -38,7 +68,6 @@ class GajiController extends Controller
      */
     public function store(Request $request)
     {
-        // 1. Validasi Input
         $request->validate([
             'karyawan_id' => 'required|exists:karyawans,id',
             'bulan'       => 'required',
@@ -48,7 +77,7 @@ class GajiController extends Controller
             'potongan'    => 'nullable|numeric|min:0',
         ]);
 
-        // 2. Cek apakah gaji periode ini sudah pernah diinput (Double Input Protection)
+        // Double Input Protection
         $cekGaji = Gaji::where('karyawan_id', $request->karyawan_id)
                        ->where('bulan', $request->bulan)
                        ->where('tahun', $request->tahun)
@@ -58,13 +87,11 @@ class GajiController extends Controller
             return redirect()->back()->with('error', 'Gaji karyawan tersebut untuk periode ' . $request->bulan . ' ' . $request->tahun . ' sudah ada!');
         }
 
-        // 3. Hitung Total Gaji
         $gaji_pokok = $request->gaji_pokok;
         $tunjangan  = $request->tunjangan ?? 0;
         $potongan   = $request->potongan ?? 0;
         $total      = ($gaji_pokok + $tunjangan) - $potongan;
 
-        // 4. Simpan ke Database
         Gaji::create([
             'karyawan_id' => $request->karyawan_id,
             'bulan'       => $request->bulan,
@@ -73,21 +100,21 @@ class GajiController extends Controller
             'tunjangan'   => $tunjangan,
             'potongan'    => $potongan,
             'total_gaji'  => $total,
-            'status'      => 'Pending', // Default selalu pending agar di-ACC Kabid
+            'status'      => 'Pending', // Menunggu ACC Kabid
         ]);
 
-        return redirect()->route('admin.gaji')->with('success', 'Data gaji berhasil disimpan! Menunggu persetujuan Kabid.');
+        return redirect()->back()->with('success', 'Data gaji berhasil disimpan! Menunggu persetujuan Kabid.');
     }
 
     /**
-     * FUNGSI ACC (KABID): Mengubah status menjadi Dibayar
+     * FUNGSI ACC (KABID): Mengubah status menjadi Disetujui
      */
     public function accGaji($id)
     {
         $gaji = Gaji::findOrFail($id);
         
         if ($gaji->status == 'Pending') {
-            $gaji->update(['status' => 'Dibayar']);
+            $gaji->update(['status' => 'Disetujui']); 
             return redirect()->back()->with('success', 'Gaji berhasil disetujui (ACC).');
         }
 
@@ -117,9 +144,9 @@ class GajiController extends Controller
             return redirect()->route('karyawan.dashboard')->with('error', 'Profil data karyawan tidak ditemukan.');
         }
 
-        // Karyawan hanya bisa melihat gaji yang sudah disetujui (Dibayar)
+        // Karyawan hanya bisa melihat gaji yang sudah di-ACC ('Disetujui')
         $gajis = Gaji::where('karyawan_id', $profil->id)
-                     ->where('status', 'Dibayar') 
+                     ->where('status', 'Disetujui') 
                      ->latest()
                      ->get();
         
@@ -133,7 +160,7 @@ class GajiController extends Controller
     {
         $gaji = Gaji::with('karyawan')->findOrFail($id);
         
-        if ($gaji->status != 'Dibayar') {
+        if ($gaji->status != 'Disetujui') {
             return redirect()->back()->with('error', 'Slip gaji belum bisa dicetak karena belum disetujui Kabid.');
         }
 

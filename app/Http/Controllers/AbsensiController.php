@@ -11,38 +11,36 @@ use Carbon\Carbon;
 class AbsensiController extends Controller
 {
     /**
-     * FUNGSI UNTUK ADMIN: Melihat Rekap Absensi
+     * Helper Function: Menghitung rekap bulanan dengan logika filter fleksibel
+     * Sinkronisasi dengan GajiController agar hasil filter konsisten
      */
-    public function indexAdmin(Request $request)
+    private function getRekapData($bulan, $tahun, $user)
     {
-        $bulan = $request->get('bulan', date('m'));
-        $tahun = $request->get('tahun', date('Y'));
+        $queryKaryawan = Karyawan::query();
 
-        $rekapAbsensi = $this->getRekapData($bulan, $tahun);
+        if ($user->role === 'admin') {
+            $karyawans = $queryKaryawan->get();
+        } else {
+            $kabid = Karyawan::where('user_id', $user->id)->first();
+            
+            if (!$kabid || empty($kabid->kode_jabatan)) {
+                return collect([]);
+            }
 
-        return view('admin.absensi', compact('rekapAbsensi', 'bulan', 'tahun'));
-    }
+            $jabatanAsli = strtolower($kabid->kode_jabatan);
+            
+            if (str_contains($jabatanAsli, 'keuangan')) {
+                $divisiKataKunci = 'Keuangan';
+            } else {
+                $divisiKataKunci = 'Admin'; 
+            }
 
-    /**
-     * FUNGSI UNTUK KABID: Menangani route 'kabid.absensi'
-     */
-    public function indexKabid(Request $request)
-    {
-        $bulan = $request->get('bulan', date('m'));
-        $tahun = $request->get('tahun', date('Y'));
+            $karyawans = $queryKaryawan->where('kode_jabatan', 'LIKE', '%' . $divisiKataKunci . '%')
+                                       ->where('user_id', '!=', $user->id)
+                                       ->get();
+        }
 
-        $rekapAbsensi = $this->getRekapData($bulan, $tahun);
-
-        // Diarahkan ke folder kabid agar sidebar tidak hilang
-        return view('kabid.absensi', compact('rekapAbsensi', 'bulan', 'tahun'));
-    }
-
-    /**
-     * Helper Function: Menghitung rekap bulanan dengan Potongan Progresif Kelipatan 10 Menit
-     */
-    private function getRekapData($bulan, $tahun)
-    {
-        return Karyawan::all()->map(function($karyawan) use ($bulan, $tahun) {
+        return $karyawans->map(function($karyawan) use ($bulan, $tahun) {
             $dataAbsensi = Absensi::where('karyawan_id', $karyawan->id)
                 ->whereMonth('tanggal', $bulan)
                 ->whereYear('tanggal', $tahun)
@@ -50,159 +48,97 @@ class AbsensiController extends Controller
 
             $hadir = $dataAbsensi->where('status', 'Hadir')->count();
             $telat = $dataAbsensi->where('status', 'Telat')->count();
-            $alpha = $dataAbsensi->where('status', 'Alpha')->count(); // Sesuai Enum DB
+            $alpha = $dataAbsensi->where('status', 'Alpha')->count();
 
-            // 1. Potongan Alpa Tetap (Rp 50.000 / Alpa)
             $potonganAlpha = $alpha * 50000;
-
-            // 2. Potongan Telat Progresif (Kelipatan Rp 10.000 tiap 10 menit dari jam masuk asli)
             $potonganTelat = 0;
-            $dataTelatKaryawan = $dataAbsensi->where('status', 'Telat');
-
-            foreach ($dataTelatKaryawan as $absen) {
+            
+            foreach ($dataAbsensi->where('status', 'Telat') as $absen) {
                 if ($absen->jam_masuk) {
-                    $jamMasuk = Carbon::parse($absen->jam_masuk);
-                    $batasMasuk = Carbon::parse($absen->tanggal . ' 08:00:00');
-                    
-                    // Hitung selisih menit mutlak (absolut)
-                    $selisihMenit = abs($jamMasuk->diffInMinutes($batasMasuk));
-                    
-                    if ($selisihMenit > 0) {
-                        // Rumus Kelipatan: Telat 30 menit -> ceil(30/10) = 3 * 10.000 = Rp 30.000
-                        // Telat 31 menit -> ceil(31/10) = 4 * 10.000 = Rp 40.000
-                        $potonganTelat += ceil($selisihMenit / 10) * 10000;
-                    }
+                    try {
+                        $jamMasuk = Carbon::parse($absen->jam_masuk);
+                        $batasMasuk = Carbon::parse($absen->tanggal . ' 08:00:00');
+                        $selisihMenit = abs($jamMasuk->diffInMinutes($batasMasuk));
+                        if ($selisihMenit > 0) {
+                            $potonganTelat += ceil($selisihMenit / 10) * 10000;
+                        }
+                    } catch (\Exception $e) { continue; }
                 }
             }
-
-            // Gabungkan total potongan akumulatif
-            $potongan = $potonganAlpha + $potonganTelat;
 
             return (object) [
                 'nama'     => $karyawan->nama_karyawan,
                 'nik'      => $karyawan->nik,
-                'periode'  => date('F', mktime(0, 0, 0, (int)$bulan, 1)) . ' ' . $tahun,
+                'periode'  => Carbon::create(null, $bulan)->format('F') . ' ' . $tahun,
                 'hadir'    => $hadir,
                 'telat'    => $telat,
                 'alpha'    => $alpha,
-                'potongan' => $potongan
+                'potongan' => $potonganAlpha + $potonganTelat
             ];
         });
     }
 
-    /**
-     * FUNGSI UNTUK KARYAWAN: Melihat Riwayat Absensi Pribadi
-     */
     public function index()
     {
-        $user = Auth::user();
-        $profil = Karyawan::where('user_id', $user->id)->first();
-
-        if (!$profil) {
-            return redirect()->route('karyawan.dashboard')->with('error', 'Profil tidak ditemukan.');
-        }
-
-        $riwayatAbsensi = Absensi::where('karyawan_id', $profil->id)
-                    ->orderBy('tanggal', 'desc')
-                    ->get();
-
-        return view('karyawan.absensi', compact('riwayatAbsensi', 'profil'));
+        $karyawan = Karyawan::where('user_id', Auth::id())->first();
+        
+        // MENAMBAHKAN VARIABEL riwayatAbsensi agar view tidak error
+        $riwayatAbsensi = Absensi::where('karyawan_id', $karyawan->id ?? 0)
+                                ->latest()
+                                ->paginate(10);
+                                
+        return view('karyawan.absensi', compact('riwayatAbsensi'));
     }
 
-    /**
-     * FUNGSI UNTUK KARYAWAN: Klik Tombol Absen Masuk (Format Jam & Menit Rapi)
-     */
     public function absenMasuk(Request $request)
     {
-        $user = Auth::user();
-        $profil = Karyawan::where('user_id', $user->id)->first();
+        $karyawan = Karyawan::where('user_id', Auth::id())->first();
+        if (!$karyawan) return redirect()->back()->with('error', 'Profil karyawan tidak ditemukan.');
+        
+        $sudahAbsen = Absensi::where('karyawan_id', $karyawan->id)
+                             ->where('tanggal', date('Y-m-d'))
+                             ->exists();
+                             
+        if ($sudahAbsen) return redirect()->back()->with('error', 'Anda sudah absen hari ini.');
 
-        if (!$profil) {
-            return redirect()->back()->with('error', 'Profil tidak ditemukan.');
-        }
-
-        // Ambil waktu real-time Zona Waktu Indonesia Barat (WIB)
-        $waktuIndo = Carbon::now('Asia/Jakarta');
-        $hariIni = $waktuIndo->format('Y-m-d');
-        $jamSekarang = $waktuIndo->format('H:i:s');
-
-        // Cek double-absen masuk hari ini
-        $cek = Absensi::where('karyawan_id', $profil->id)
-                      ->whereDate('tanggal', $hariIni)
-                      ->first();
-
-        if ($cek) {
-            return redirect()->back()->with('error', 'Kamu sudah melakukan absen masuk hari ini!');
-        }
-
-        // Tentukan batas waktu masuk kerja (jam 08:00 pagi hari ini)
-        $batasAbsen = Carbon::createFromFormat('Y-m-d H:i:s', $hariIni . ' 08:00:00', 'Asia/Jakarta');
-
-        // --- LOGIKA STATUS DAN FORMAT TEXT KETERANGAN BERSIH ---
-        if ($waktuIndo->greaterThan($batasAbsen)) {
-            $status = 'Telat';
-            $totalMenit = abs($waktuIndo->diffInMinutes($batasAbsen));
-            
-            // Konversi total menit ke Jam dan sisa Menit bulat
-            $jam = floor($totalMenit / 60);
-            $menit = $totalMenit % 60;
-
-            if ($jam > 0) {
-                $keterangan = 'Terlambat ' . $jam . ' Jam ' . $menit . ' Menit';
-            } else {
-                $keterangan = 'Terlambat ' . $menit . ' Menit';
-            }
-        } else {
-            $status = 'Hadir';
-            $keterangan = 'Tepat Waktu';
-        }
-
-        // Buat data absensi masuk baru ke database
         Absensi::create([
-            'karyawan_id' => $profil->id,
-            'tanggal'     => $hariIni,
-            'jam_masuk'   => $jamSekarang,
-            'status'      => $status,
-            'keterangan'  => $keterangan,
+            'karyawan_id' => $karyawan->id,
+            'tanggal'     => date('Y-m-d'),
+            'jam_masuk'   => date('H:i:s'),
+            'status'      => 'Hadir'
         ]);
-
-        return redirect()->back()->with('success', 'Berhasil! Masuk pukul ' . $waktuIndo->format('H:i') . ' (' . $keterangan . ')');
+        return redirect()->back()->with('success', 'Berhasil absen masuk!');
     }
 
-    /**
-     * FUNGSI UNTUK KARYAWAN: Klik Tombol Absen Pulang
-     */
     public function absenPulang(Request $request)
     {
-        $user = Auth::user();
-        $profil = Karyawan::where('user_id', $user->id)->first();
-
-        if (!$profil) {
-            return redirect()->back()->with('error', 'Profil tidak ditemukan.');
+        $karyawan = Karyawan::where('user_id', Auth::id())->first();
+        $absen = Absensi::where('karyawan_id', $karyawan->id)
+                        ->where('tanggal', date('Y-m-d'))->first();
+        if ($absen) {
+            $absen->update(['jam_pulang' => date('H:i:s')]);
+            return redirect()->back()->with('success', 'Berhasil absen pulang!');
         }
+        return redirect()->back()->with('error', 'Anda belum absen masuk!');
+    }
 
-        $waktuIndo = Carbon::now('Asia/Jakarta');
-        $hariIni = $waktuIndo->format('Y-m-d');
-        $jamSekarang = $waktuIndo->format('H:i:s');
+    public function indexAdmin(Request $request)
+    {
+        $bulan = $request->get('bulan', date('m'));
+        $tahun = $request->get('tahun', date('Y'));
+        
+        if (Auth::user()->role !== 'admin') return redirect()->back();
+        
+        $rekapAbsensi = $this->getRekapData($bulan, $tahun, Auth::user());
+        return view('admin.absensi', compact('rekapAbsensi', 'bulan', 'tahun'));
+    }
 
-        // Cari data absensi hari ini
-        $absen = Absensi::where('karyawan_id', $profil->id)
-                        ->whereDate('tanggal', $hariIni)
-                        ->first();
-
-        if (!$absen) {
-            return redirect()->back()->with('error', 'Kamu belum melakukan absen masuk hari ini!');
-        }
-
-        if ($absen->jam_pulang != null) {
-            return redirect()->back()->with('error', 'Kamu sudah melakukan absen pulang hari ini!');
-        }
-
-        // Update jam pulang
-        $absen->update([
-            'jam_pulang' => $jamSekarang,
-        ]);
-
-        return redirect()->back()->with('success', 'Berhasil! Pulang pukul ' . $waktuIndo->format('H:i'));
+    public function indexKabid(Request $request)
+    {
+        $bulan = $request->get('bulan', date('m'));
+        $tahun = $request->get('tahun', date('Y'));
+        
+        $rekapAbsensi = $this->getRekapData($bulan, $tahun, Auth::user());
+        return view('kabid.absensi', compact('rekapAbsensi', 'bulan', 'tahun'));
     }
 }

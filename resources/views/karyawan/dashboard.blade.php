@@ -20,12 +20,14 @@
             <div class="card border-0 shadow-sm p-4 h-100" style="border-radius: 20px;">
                 <h5 class="fw-bold mb-3"><i class="bi bi-clock-history me-2"></i>Presensi Hari Ini</h5>
                 <hr>
-                <p class="text-muted small">{{ \Carbon\Carbon::now()->translatedFormat('l, d F Y') }}</p>
+                <p class="text-muted small text-uppercase fw-bold text-secondary">
+                    {{ \Carbon\Carbon::now()->translatedFormat('l, d F Y') }}
+                </p>
 
                 {{-- KONDISI 1: Belum Absen Masuk --}}
                 @if(!$sudahAbsen)
-                    <div class="alert alert-warning border-0 small">
-                        Kamu belum melakukan absen masuk hari ini.
+                    <div class="alert alert-warning border-0 small" style="border-radius: 12px;">
+                        <i class="bi bi-exclamation-circle-fill me-2"></i> Kamu belum melakukan absen masuk hari ini.
                     </div>
                     <form action="{{ route('karyawan.absen.masuk') }}" method="POST">
                         @csrf
@@ -36,8 +38,8 @@
 
                 {{-- KONDISI 2: Sudah Absen Masuk, Tapi Belum Absen Pulang --}}
                 @elseif($sudahAbsen && is_null($sudahAbsen->jam_pulang))
-                    <div class="alert alert-info border-0 small">
-                        Kamu sudah absen masuk. Jangan lupa melakukan absen pulang sebelum pulang kerja!
+                    <div class="alert alert-info border-0 small" style="border-radius: 12px;">
+                        <i class="bi bi-info-circle-fill me-2"></i> Sudah absen masuk. Jangan lupa absen pulang sebelum meninggalkan tempat kerja!
                     </div>
                     <form action="{{ route('karyawan.absen.pulang') }}" method="POST">
                         @csrf
@@ -46,10 +48,10 @@
                         </button>
                     </form>
                     <div class="text-center mt-3">
-                        <p class="text-muted small mb-1">Status: <strong>{{ $sudahAbsen->status }}</strong></p>
-                        <div class="badge bg-light text-dark p-2 w-100" style="font-size: 0.9rem;">
-                            <i class="bi bi-clock me-1"></i> Jam Masuk: 
-                            {{ $sudahAbsen->jam_masuk ? \Carbon\Carbon::parse($sudahAbsen->jam_masuk)->format('H:i') : $sudahAbsen->created_at->format('H:i') }} WIB
+                        <p class="text-muted small mb-1">Status: <span class="badge bg-warning text-dark">{{ $sudahAbsen->status }}</span></p>
+                        <div class="badge bg-light text-dark p-2 w-100" style="font-size: 0.9rem; border-radius: 10px;">
+                            <i class="bi bi-clock me-1 text-primary"></i> Jam Masuk: 
+                            {{ $sudahAbsen->jam_masuk ? date('H:i', strtotime($sudahAbsen->jam_masuk)) : $sudahAbsen->created_at->format('H:i') }} WIB
                         </div>
                     </div>
 
@@ -60,15 +62,15 @@
                             <i class="bi bi-check-circle-fill"></i>
                         </div>
                         <h5 class="fw-bold text-success mb-2">Absensi Hari Ini Selesai</h5>
-                        <p class="text-muted small mb-3">Status: <strong>{{ $sudahAbsen->status }}</strong></p>
+                        <p class="text-muted small mb-3">Status: <span class="badge bg-success">{{ $sudahAbsen->status }}</span></p>
                         
-                        <div class="badge bg-light text-dark p-2 w-100 mb-2" style="font-size: 0.9rem;">
-                            <i class="bi bi-clock me-1"></i> Jam Masuk: 
-                            {{ \Carbon\Carbon::parse($sudahAbsen->jam_masuk)->format('H:i') }} WIB
+                        <div class="badge bg-light text-dark p-2 w-100 mb-2" style="font-size: 0.9rem; border-radius: 10px;">
+                            <i class="bi bi-clock me-1 text-success"></i> Jam Masuk: 
+                            {{ date('H:i', strtotime($sudahAbsen->jam_masuk)) }} WIB
                         </div>
-                        <div class="badge bg-light text-dark p-2 w-100" style="font-size: 0.9rem;">
-                            <i class="bi bi-box-arrow-left me-1"></i> Jam Pulang: 
-                            {{ \Carbon\Carbon::parse($sudahAbsen->jam_pulang)->format('H:i') }} WIB
+                        <div class="badge bg-light text-dark p-2 w-100" style="font-size: 0.9rem; border-radius: 10px;">
+                            <i class="bi bi-box-arrow-left me-1 text-danger"></i> Jam Pulang: 
+                            {{ date('H:i', strtotime($sudahAbsen->jam_pulang)) }} WIB
                         </div>
                     </div>
                 @endif
@@ -94,11 +96,11 @@
                         <tbody>
                             @forelse($riwayatGaji as $g)
                             <tr>
-                                <td><span class="fw-bold">{{ $g->bulan }} {{ $g->tahun }}</span></td>
+                                <td><span class="fw-bold text-dark">{{ $g->bulan }} {{ $g->tahun }}</span></td>
                                 <td class="fw-bold text-primary">Rp {{ number_format($g->total_gaji, 0, ',', '.') }}</td>
                                 <td class="text-center">
-                                    {{-- Mengarah ke cetak PDF slip gaji --}}
-                                    <a href="{{ route('admin.gaji.cetak', $g->id) }}" class="btn btn-sm btn-outline-danger" target="_blank">
+                                    {{-- FIX: Dialihkan ke route cetak slip ber-prefix karyawan/umum demi keamanan hak akses role --}}
+                                    <a href="{{ route('karyawan.gaji.cetak', $g->id) }}" class="btn btn-sm btn-outline-danger" style="border-radius: 6px;" target="_blank">
                                         <i class="bi bi-file-earmark-pdf"></i>
                                     </a>
                                 </td>
@@ -106,6 +108,7 @@
                             @empty
                             <tr>
                                 <td colspan="3" class="text-center py-4 text-muted small">
+                                    <i class="bi bi-wallet2 d-block mb-2 opacity-50" style="font-size: 1.5rem;"></i>
                                     Belum ada data pembayaran gaji.
                                 </td>
                             </tr>

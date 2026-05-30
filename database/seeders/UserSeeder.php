@@ -6,114 +6,64 @@ use Illuminate\Database\Seeder;
 use App\Models\User;
 use App\Models\Karyawan;
 use App\Models\Absensi;
+use App\Models\Gaji;
 use Illuminate\Support\Facades\Hash;
 use Carbon\Carbon;
 
 class UserSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        // 1. Membuat Akun Admin Default
-        User::create([
-            'name'     => 'Administrator',
-            'username' => 'admin',
-            'password' => Hash::make('admin123'),
-            'role'     => 'admin',
-        ]);
-
-        // 2. Membuat Akun Kabid Default
-        User::create([
-            'name'     => 'Kepala Bidang',
-            'username' => 'kabid',
-            'password' => Hash::make('kabid123'),
-            'role'     => 'kabid',
-        ]);
-
-        // 3. Membuat Akun Karyawan Default (Ibrizah)
-        $karyawan1 = User::create([
-            'name'     => 'Ibrizah',
-            'username' => 'ibrizah',
-            'password' => Hash::make('karyawan123'),
-            'role'     => 'karyawan',
-        ]);
-
-        $profilIbrizah = Karyawan::create([
-            'user_id'       => $karyawan1->id,
-            'nik'           => '3201012345678901',
-            'nama_karyawan' => 'Ibrizah',
-            'kode_jabatan'  => 'Staff',
-            'no_hp'         => '081234567890',
-            'alamat'        => 'Jl. Merdeka No. 10',
-            'tahun_lahir'   => 2000
-        ]);
-
-        // 4. Membuat Akun Karyawan Default Kedua (Adiba)
-        $karyawan2 = User::create([
-            'name'     => 'Adiba',
-            'username' => 'adiba',
-            'password' => Hash::make('karyawan123'),
-            'role'     => 'karyawan',
-        ]);
-
-        $profilAdiba = Karyawan::create([
-            'user_id'       => $karyawan2->id,
-            'nik'           => '3201012345678902',
-            'nama_karyawan' => 'Adiba',
-            'kode_jabatan'  => 'Manager',
-            'no_hp'         => '085712345678',
-            'alamat'        => 'Jl. Sudirman No. 5',
-            'tahun_lahir'   => 1998
-        ]);
+        // 1. Admin Utama
+        User::create(['name' => 'Administrator Utama', 'username' => 'admin', 'password' => Hash::make('admin123'), 'role' => 'admin']);
 
         // ============================================================
-        // 🌟 TAMBAHAN AUTOMATIS: DUMMY DATA ABSENSI BULAN INI
+        // 🌟 AKUN KABID (MANAJERIAL)
         // ============================================================
-        $bulanIni = Carbon::now()->format('Y-m');
+        $kabidAdmin = User::create(['name' => 'Ahmad Subarjo (Kabid Admin)', 'username' => 'kabid_admin', 'password' => Hash::make('kabid123'), 'role' => 'kabid']);
+        Karyawan::create(['user_id' => $kabidAdmin->id, 'nik' => '3201019998887771', 'nama_karyawan' => 'Ahmad Subarjo', 'kode_jabatan' => 'Administrasi']);
 
-        // Dummy Absen untuk Ibrizah (Contoh: Hadir Tepat Waktu, Telat, Alpha)
-        Absensi::create([
-            'karyawan_id' => $profilIbrizah->id,
-            'tanggal'     => $bulanIni . '-11',
-            'jam_masuk'   => '07:45:00',
-            'jam_pulang'  => '16:00:00',
-            'status'      => 'Hadir'
-        ]);
+        $kabidKeuangan = User::create(['name' => 'Siti Aminah (Kabid Keuangan)', 'username' => 'kabid_keuangan', 'password' => Hash::make('kabid123'), 'role' => 'kabid']);
+        Karyawan::create(['user_id' => $kabidKeuangan->id, 'nik' => '3201019998887772', 'nama_karyawan' => 'Siti Aminah', 'kode_jabatan' => 'Keuangan']);
 
-        Absensi::create([
-            'karyawan_id' => $profilIbrizah->id,
-            'tanggal'     => $bulanIni . '-12',
-            'jam_masuk'   => '08:15:00', // Lewat jam 08:00 -> Potongan Rp 10.000
-            'jam_pulang'  => '16:00:00',
-            'status'      => 'Telat'
-        ]);
+        // ============================================================
+        // 🌟 AKUN KARYAWAN (ABSENSI)
+        // ============================================================
+        $userAhmad = User::create(['name' => 'Ahmad Subarjo', 'username' => 'ahmad_subarjo', 'password' => Hash::make('absen123'), 'role' => 'karyawan']);
+        $profilAhmad = Karyawan::create(['user_id' => $userAhmad->id, 'nik' => 'KRY001', 'nama_karyawan' => 'Ahmad Subarjo', 'kode_jabatan' => 'Administrasi']);
 
-        Absency::create([
-            'karyawan_id' => $profilIbrizah->id,
-            'tanggal'     => $bulanIni . '-13',
-            'jam_masuk'   => null,
-            'jam_pulang'  => null,
-            'status'      => 'Alpha' // Potongan Rp 50.000
-        ]);
+        $userSiti = User::create(['name' => 'Siti Aminah', 'username' => 'siti_aminah', 'password' => Hash::make('absen123'), 'role' => 'karyawan']);
+        $profilSiti = Karyawan::create(['user_id' => $userSiti->id, 'nik' => 'KRY002', 'nama_karyawan' => 'Siti Aminah', 'kode_jabatan' => 'Keuangan']);
 
+        $k1 = User::create(['name' => 'Ibrizah', 'username' => 'ibrizah', 'password' => Hash::make('karyawan123'), 'role' => 'karyawan']);
+        $p1 = Karyawan::create(['user_id' => $k1->id, 'nik' => 'KRY003', 'nama_karyawan' => 'Ibrizah', 'kode_jabatan' => 'Administrasi']);
 
-        // Dummy Absen untuk Adiba (Contoh: Rajin Hadir Semua)
-        Absensi::create([
-            'karyawan_id' => $profilAdiba->id,
-            'tanggal'     => $bulanIni . '-11',
-            'jam_masuk'   => '07:50:00',
-            'jam_pulang'  => '16:00:00',
-            'status'      => 'Hadir'
-        ]);
+        $k2 = User::create(['name' => 'Adiba', 'username' => 'adiba', 'password' => Hash::make('karyawan123'), 'role' => 'karyawan']);
+        $p2 = Karyawan::create(['user_id' => $k2->id, 'nik' => 'KRY004', 'nama_karyawan' => 'Adiba', 'kode_jabatan' => 'Keuangan']);
 
-        Absensi::create([
-            'karyawan_id' => $profilAdiba->id,
-            'tanggal'     => $bulanIni . '-12',
-            'jam_masuk'   => '07:30:00',
-            'jam_pulang'  => '16:05:00',
-            'status'      => 'Hadir'
-        ]);
+        // ============================================================
+        // 🌟 DUMMY DATA GAJI (LENGKAP)
+        // ============================================================
+        if (class_exists(\App\Models\Gaji::class)) {
+            $dataGaji = [
+                [$profilAhmad->id, 5000000, 500000, 0, 5500000],
+                [$profilSiti->id, 5000000, 500000, 0, 5500000],
+                [$p1->id, 4500000, 500000, 50000, 4950000],
+                [$p2->id, 5000000, 700000, 0, 5700000]
+            ];
+
+            foreach ($dataGaji as $g) {
+                Gaji::create([
+                    'karyawan_id' => $g[0],
+                    'bulan'       => Carbon::now()->translatedFormat('F'),
+                    'tahun'       => Carbon::now()->format('Y'),
+                    'gaji_pokok'  => $g[1],
+                    'tunjangan'   => $g[2],
+                    'potongan'    => $g[3],
+                    'total_gaji'  => $g[4],
+                    'status'      => 'Pending'
+                ]);
+            }
+        }
     }
 }

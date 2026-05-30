@@ -18,10 +18,20 @@ class Karyawan extends Model
         'nik', 
         'nama_karyawan', 
         'kode_jabatan', 
-        'no_hp',         // Memastikan mass-assignment no_hp aktif dan aman
+        'no_hp',
         'alamat', 
         'tahun_lahir'   
     ];
+
+    /**
+     * MUTATOR: Otomatis membersihkan kode_jabatan sebelum disimpan.
+     * Ini akan mengubah 'Keuangan ' menjadi 'KEUANGAN' secara otomatis.
+     * Ini mencegah masalah data tidak sinkron akibat perbedaan penulisan.
+     */
+    public function setKodeJabatanAttribute($value)
+    {
+        $this->attributes['kode_jabatan'] = strtoupper(trim($value));
+    }
 
     /**
      * Relasi ke model User (Akun Login)

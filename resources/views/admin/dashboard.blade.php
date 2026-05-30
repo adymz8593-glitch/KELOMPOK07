@@ -129,8 +129,9 @@
             <i class="bi bi-grid-1x2-fill"></i> Dashboard
         </a>
 
-        @if(Auth::user()->role == 'admin')
-        <a href="{{ route('admin.karyawan') }}" class="nav-link {{ Request::routeIs('admin.karyawan') ? 'active' : '' }}">
+        {{-- FIX: Route disesuaikan ke .index & Hak Akses dibuka untuk Admin dan Kabid --}}
+        @if(Auth::user()->role == 'admin' || Auth::user()->role == 'kabid')
+        <a href="{{ route('admin.karyawan.index') }}" class="nav-link {{ Request::routeIs('admin.karyawan.index') ? 'active' : '' }}">
             <i class="bi bi-people-fill"></i> Data Karyawan
         </a>
         @endif
@@ -212,8 +213,9 @@
                         <h5 class="fw-bold mb-0">Karyawan Baru Terdaftar</h5>
                         <p class="text-muted small mb-0">Daftar 5 anggota tim terbaru yang bergabung.</p>
                     </div>
-                    @if(Auth::user()->role == 'admin')
-                        <a href="{{ route('admin.karyawan') }}" class="btn btn-sm btn-light border text-primary fw-bold px-3 py-2">Kelola Data</a>
+                    {{-- FIX: Link dialihkan ke admin.karyawan.index dan dibuka juga untuk Kabid --}}
+                    @if(Auth::user()->role == 'admin' || Auth::user()->role == 'kabid')
+                        <a href="{{ route('admin.karyawan.index') }}" class="btn btn-sm btn-light border text-primary fw-bold px-3 py-2">Kelola Data</a>
                     @endif
                 </div>
                 <div class="table-responsive">
@@ -239,7 +241,6 @@
                                     </div>
                                 </td>
                                 <td>
-                                    {{-- Cek apakah kolomnya kode_jabatan atau jabatan --}}
                                     <span class="badge bg-light text-dark border px-3 py-2">
                                         {{ $k->kode_jabatan ?? $k->jabatan }}
                                     </span>

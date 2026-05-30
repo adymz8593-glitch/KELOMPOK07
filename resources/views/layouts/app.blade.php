@@ -17,118 +17,83 @@
             --bg-body: #f9fafb;
         }
 
-        body { 
-            background-color: var(--bg-body); 
-            font-family: 'Inter', sans-serif; 
-            margin: 0;
-            color: #111827;
-        }
+        body { background-color: var(--bg-body); font-family: 'Inter', sans-serif; margin: 0; color: #111827; }
 
-        /* Sidebar Styling */
         .sidebar { 
-            height: 100vh; 
-            background: var(--sidebar-bg); 
-            color: white; 
-            position: fixed; 
-            width: 260px; 
-            padding: 20px 0;
-            box-shadow: 4px 0 10px rgba(0,0,0,0.05);
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
+            height: 100vh; background: var(--sidebar-bg); color: white; position: fixed; width: 260px; 
+            padding: 20px 0; box-shadow: 4px 0 10px rgba(0,0,0,0.05); z-index: 100; display: flex; flex-direction: column; 
         }
 
         .sidebar-brand {
-            padding: 0 25px 30px;
-            font-size: 1.5rem;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            color: white;
-            text-decoration: none;
+            padding: 0 25px 30px; font-size: 1.5rem; font-weight: 700; display: flex; align-items: center; 
+            color: white; text-decoration: none;
         }
 
-        .nav-wrapper {
-            flex-grow: 1;
-        }
+        .nav-wrapper { flex-grow: 1; overflow-y: auto; }
 
         .nav-link { 
-            color: #94a3b8; 
-            padding: 12px 25px; 
-            display: flex; 
-            align-items: center; 
-            text-decoration: none; 
-            transition: 0.2s;
-            margin: 4px 15px;
-            border-radius: 10px;
+            color: #94a3b8; padding: 12px 25px; display: flex; align-items: center; text-decoration: none; 
+            transition: 0.2s; margin: 4px 15px; border-radius: 10px;
         }
 
         .nav-link:hover { color: white; background: rgba(255,255,255,0.05); }
         .nav-link.active { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3); }
         .nav-link i { font-size: 1.2rem; margin-right: 12px; }
 
-        /* Main Content */
         .main-content { margin-left: 260px; padding: 40px; }
-
-        /* Card & Table Styling */
         .card { border-radius: 20px; border: none; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
-        
-        .logout-section {
-            padding: 20px;
-            border-top: 1px solid rgba(255,255,255,0.05);
-        }
+        .logout-section { padding: 20px; border-top: 1px solid rgba(255,255,255,0.05); }
     </style>
 </head>
 <body>
 
+@auth
 <div class="sidebar">
-    {{-- Brand Link --}}
-    <a href="{{ auth()->user()->role == 'admin' ? route('admin.dashboard') : route('karyawan.dashboard') }}" class="sidebar-brand">
+    {{-- Ambil Role dengan Null-Coalesce agar tidak error --}}
+    @php
+        $user = auth()->user();
+        $role = $user->role ?? 'guest';
+        $brandRoute = match($role) {
+            'admin' => 'admin.dashboard',
+            'kabid' => 'kabid.dashboard',
+            default => 'karyawan.dashboard',
+        };
+    @endphp
+
+    <a href="{{ route($brandRoute) }}" class="sidebar-brand">
         <i class="bi bi-wallet2 me-2 text-primary"></i> E-Payroll
     </a>
     
     <div class="nav-wrapper">
         <nav>
-            {{-- MENU KHUSUS ADMIN --}}
-            @if(auth()->user()->role == 'admin')
+            {{-- Menu Admin --}}
+            @if($role == 'admin')
                 <div class="px-4 mb-2 text-uppercase fw-bold" style="font-size: 0.7rem; color: #64748b; letter-spacing: 1px;">Admin Panel</div>
-                
-                <a href="{{ route('admin.dashboard') }}" class="nav-link {{ Request::is('admin/dashboard') ? 'active' : '' }}">
-                    <i class="bi bi-grid-1x2-fill"></i> Dashboard
-                </a>
-                <a href="{{ route('admin.karyawan') }}" class="nav-link {{ Request::is('admin/karyawan*') ? 'active' : '' }}">
-                    <i class="bi bi-people-fill"></i> Data Karyawan
-                </a>
-                <a href="{{ route('admin.absensi') }}" class="nav-link {{ Request::is('admin/absensi*') ? 'active' : '' }}">
-                    <i class="bi bi-calendar2-check-fill"></i> Rekap Absensi
-                </a>
-                <a href="{{ route('admin.gaji') }}" class="nav-link {{ Request::is('admin/gaji*') ? 'active' : '' }}">
-                    <i class="bi bi-cash-stack"></i> Kelola Gaji
-                </a>
+                <a href="{{ route('admin.dashboard') }}" class="nav-link {{ Request::is('admin/dashboard') ? 'active' : '' }}"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a>
+                <a href="{{ route('admin.karyawan.index') }}" class="nav-link {{ Request::is('admin/karyawan*') ? 'active' : '' }}"><i class="bi bi-people-fill"></i> Data Karyawan</a>
+                <a href="{{ route('admin.absensi') }}" class="nav-link {{ Request::is('admin/absensi*') ? 'active' : '' }}"><i class="bi bi-calendar2-check-fill"></i> Rekap Absensi</a>
+                <a href="{{ route('admin.gaji') }}" class="nav-link {{ Request::is('admin/gaji*') ? 'active' : '' }}"><i class="bi bi-cash-stack"></i> Kelola Gaji</a>
             @endif
 
-            {{-- MENU KHUSUS KARYAWAN --}}
-            @if(auth()->user()->role == 'karyawan')
-                <div class="px-4 mb-2 text-uppercase fw-bold" style="font-size: 0.7rem; color: #64748b; letter-spacing: 1px;">Menu Karyawan</div>
-                
-                <a href="{{ route('karyawan.dashboard') }}" class="nav-link {{ Request::is('karyawan/dashboard') ? 'active' : '' }}">
-                    <i class="bi bi-house-door-fill"></i> Dashboard
-                </a>
-                
-                {{-- PERBAIKAN: Hubungkan ke route karyawan.absensi --}}
-                <a href="{{ route('karyawan.absensi') }}" class="nav-link {{ Request::is('karyawan/absensi*') ? 'active' : '' }}">
-                    <i class="bi bi-calendar-check-fill"></i> Absensi Saya
-                </a>
+            {{-- Menu Kabid --}}
+            @if($role == 'kabid')
+                <div class="px-4 mb-2 text-uppercase fw-bold" style="font-size: 0.7rem; color: #64748b; letter-spacing: 1px;">Kabid Panel</div>
+                <a href="{{ route('kabid.dashboard') }}" class="nav-link {{ Request::is('kabid/dashboard') ? 'active' : '' }}"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a>
+                <a href="{{ route('admin.karyawan.index') }}" class="nav-link {{ Request::is('admin/karyawan*') ? 'active' : '' }}"><i class="bi bi-people-fill"></i> Monitoring Anggota</a>
+                <a href="{{ route('kabid.absensi') }}" class="nav-link {{ Request::is('kabid/absensi*') ? 'active' : '' }}"><i class="bi bi-calendar2-check-fill"></i> Rekap Absensi</a>
+                <a href="{{ route('kabid.gaji') }}" class="nav-link {{ Request::is('kabid/gaji*') ? 'active' : '' }}"><i class="bi bi-cash-stack"></i> Validasi Gaji</a>
+            @endif
 
-                {{-- PERBAIKAN: Hubungkan ke route karyawan.gaji --}}
-                <a href="{{ route('karyawan.gaji') }}" class="nav-link {{ Request::is('karyawan/gaji*') ? 'active' : '' }}">
-                    <i class="bi bi-file-earmark-spreadsheet-fill"></i> Slip Gaji
-                </a>
+            {{-- Menu Karyawan --}}
+            @if($role == 'karyawan')
+                <div class="px-4 mb-2 text-uppercase fw-bold" style="font-size: 0.7rem; color: #64748b; letter-spacing: 1px;">Menu Karyawan</div>
+                <a href="{{ route('karyawan.dashboard') }}" class="nav-link {{ Request::is('karyawan/dashboard') ? 'active' : '' }}"><i class="bi bi-house-door-fill"></i> Dashboard</a>
+                <a href="{{ route('karyawan.absensi') }}" class="nav-link {{ Request::is('karyawan/absensi*') ? 'active' : '' }}"><i class="bi bi-calendar-check-fill"></i> Absensi Saya</a>
+                <a href="{{ route('karyawan.gaji') }}" class="nav-link {{ Request::is('karyawan/gaji*') ? 'active' : '' }}"><i class="bi bi-file-earmark-spreadsheet-fill"></i> Slip Gaji</a>
             @endif
         </nav>
     </div>
 
-    {{-- BAGIAN LOGOUT --}}
     <div class="logout-section">
         <form action="{{ route('logout') }}" method="POST">
             @csrf
@@ -138,6 +103,7 @@
         </form>
     </div>
 </div>
+@endauth
 
 <div class="main-content">
     @yield('content')

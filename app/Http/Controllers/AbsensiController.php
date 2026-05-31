@@ -11,6 +11,34 @@ use Carbon\Carbon;
 class AbsensiController extends Controller
 {
     /**
+     * Helper Function: Mengecek dan mencatat karyawan yang belum absen sebagai Alpha
+     */
+    private function cekAlphaOtomatis()
+    {
+        // Hanya jalankan pengecekan setelah jam pulang (misal setelah jam 17:00 WIB)
+        if (Carbon::now('Asia/Jakarta')->format('H:i') >= '17:00') {
+            $semuaKaryawan = Karyawan::all();
+            $hariIni = date('Y-m-d');
+
+            foreach ($semuaKaryawan as $karyawan) {
+                $sudahAda = Absensi::where('karyawan_id', $karyawan->id)
+                                   ->where('tanggal', $hariIni)
+                                   ->exists();
+                
+                if (!$sudahAda) {
+                    Absensi::create([
+                        'karyawan_id' => $karyawan->id,
+                        'tanggal'     => $hariIni,
+                        'status'      => 'Alpha',
+                        'jam_masuk'   => null,
+                        'jam_pulang'  => null
+                    ]);
+                }
+            }
+        }
+    }
+
+    /**
      * Helper Function: Menghitung rekap bulanan
      */
     private function getRekapData($bulan, $tahun, $user)
@@ -50,13 +78,11 @@ class AbsensiController extends Controller
             foreach ($dataAbsensi->where('status', 'Telat') as $absen) {
                 if ($absen->jam_masuk) {
                     try {
-                        // Memastikan jam masuk dibandingkan dengan batas 08:00:00 di hari yang sama
                         $jamMasuk = Carbon::parse($absen->jam_masuk);
                         $batasMasuk = Carbon::parse($absen->tanggal . ' 08:00:00');
                         
                         if ($jamMasuk->greaterThan($batasMasuk)) {
                             $selisihMenit = $batasMasuk->diffInMinutes($jamMasuk);
-                            // Potongan 10k setiap 10 menit (kelipatan)
                             $potonganTelat += (floor($selisihMenit / 10)) * 10000;
                         }
                     } catch (\Exception $e) { continue; }
@@ -97,7 +123,6 @@ class AbsensiController extends Controller
                              
         if ($sudahAbsen) return redirect()->back()->with('error', 'Anda sudah absen hari ini.');
 
-        // LOGIKA JAM MASUK: Jika > 08:00 status Telat, jika tidak status Hadir
         $jamSekarang = Carbon::now('Asia/Jakarta');
         $batasWaktu = Carbon::createFromTime(8, 0, 0, 'Asia/Jakarta');
         
@@ -129,6 +154,8 @@ class AbsensiController extends Controller
 
     public function indexAdmin(Request $request)
     {
+        $this->cekAlphaOtomatis(); // Panggil pengecekan otomatis
+        
         $bulan = $request->get('bulan', date('m'));
         $tahun = $request->get('tahun', date('Y'));
         
@@ -140,6 +167,8 @@ class AbsensiController extends Controller
 
     public function indexKabid(Request $request)
     {
+        $this->cekAlphaOtomatis(); // Panggil pengecekan otomatis
+        
         $bulan = $request->get('bulan', date('m'));
         $tahun = $request->get('tahun', date('Y'));
         

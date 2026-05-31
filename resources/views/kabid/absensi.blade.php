@@ -7,6 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         :root { --primary: #4f46e5; --sidebar-bg: #1e293b; --bg-body: #f4f7f6; }
         body { background-color: var(--bg-body); font-family: 'Inter', sans-serif; }
@@ -68,7 +69,7 @@
 
     {{-- BAGIAN BAWAH: Tombol Keluar (Logout) --}}
     <div class="pt-3 border-top border-secondary mx-3">
-        <a href="#" class="nav-link text-danger-soft fw-bold" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+        <a href="#" class="nav-link text-danger-soft fw-bold" onclick="confirmLogout()">
             <i class="bi bi-box-arrow-left me-2"></i> Keluar
         </a>
         <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
@@ -170,5 +171,23 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    function confirmLogout() {
+        Swal.fire({
+            title: 'Keluar dari Sistem?',
+            text: "Anda akan menyudahi sesi masuk di panel Kabid ini..",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#f43f5e',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Ya, Keluar',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById('logout-form').submit();
+            }
+        });
+    }
+</script>
 </body>
 </html>

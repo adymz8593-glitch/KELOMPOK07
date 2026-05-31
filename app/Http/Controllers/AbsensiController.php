@@ -11,8 +11,7 @@ use Carbon\Carbon;
 class AbsensiController extends Controller
 {
     /**
-     * Helper Function: Menghitung rekap bulanan dengan logika filter fleksibel
-     * Sinkronisasi dengan GajiController agar hasil filter konsisten
+     * Helper Function: Menghitung rekap bulanan
      */
     private function getRekapData($bulan, $tahun, $user)
     {
@@ -28,12 +27,7 @@ class AbsensiController extends Controller
             }
 
             $jabatanAsli = strtolower($kabid->kode_jabatan);
-            
-            if (str_contains($jabatanAsli, 'keuangan')) {
-                $divisiKataKunci = 'Keuangan';
-            } else {
-                $divisiKataKunci = 'Admin'; 
-            }
+            $divisiKataKunci = str_contains($jabatanAsli, 'keuangan') ? 'Keuangan' : 'Admin';
 
             $karyawans = $queryKaryawan->where('kode_jabatan', 'LIKE', '%' . $divisiKataKunci . '%')
                                        ->where('user_id', '!=', $user->id)
@@ -56,11 +50,14 @@ class AbsensiController extends Controller
             foreach ($dataAbsensi->where('status', 'Telat') as $absen) {
                 if ($absen->jam_masuk) {
                     try {
+                        // Memastikan jam masuk dibandingkan dengan batas 08:00:00 di hari yang sama
                         $jamMasuk = Carbon::parse($absen->jam_masuk);
                         $batasMasuk = Carbon::parse($absen->tanggal . ' 08:00:00');
-                        $selisihMenit = abs($jamMasuk->diffInMinutes($batasMasuk));
-                        if ($selisihMenit > 0) {
-                            $potonganTelat += ceil($selisihMenit / 10) * 10000;
+                        
+                        if ($jamMasuk->greaterThan($batasMasuk)) {
+                            $selisihMenit = $batasMasuk->diffInMinutes($jamMasuk);
+                            // Potongan 10k setiap 10 menit (kelipatan)
+                            $potonganTelat += (floor($selisihMenit / 10)) * 10000;
                         }
                     } catch (\Exception $e) { continue; }
                 }
@@ -82,7 +79,6 @@ class AbsensiController extends Controller
     {
         $karyawan = Karyawan::where('user_id', Auth::id())->first();
         
-        // MENAMBAHKAN VARIABEL riwayatAbsensi agar view tidak error
         $riwayatAbsensi = Absensi::where('karyawan_id', $karyawan->id ?? 0)
                                 ->latest()
                                 ->paginate(10);
@@ -101,13 +97,21 @@ class AbsensiController extends Controller
                              
         if ($sudahAbsen) return redirect()->back()->with('error', 'Anda sudah absen hari ini.');
 
+        // LOGIKA JAM MASUK: Jika > 08:00 status Telat, jika tidak status Hadir
+        $jamSekarang = Carbon::now('Asia/Jakarta');
+        $batasWaktu = Carbon::createFromTime(8, 0, 0, 'Asia/Jakarta');
+        
+        $status = $jamSekarang->greaterThan($batasWaktu) ? 'Telat' : 'Hadir';
+
         Absensi::create([
             'karyawan_id' => $karyawan->id,
             'tanggal'     => date('Y-m-d'),
-            'jam_masuk'   => date('H:i:s'),
-            'status'      => 'Hadir'
+            'jam_masuk'   => $jamSekarang->format('H:i:s'),
+            'status'      => $status
         ]);
-        return redirect()->back()->with('success', 'Berhasil absen masuk!');
+
+        $pesan = ($status == 'Telat') ? 'Anda absen masuk (Terlambat)!' : 'Berhasil absen masuk!';
+        return redirect()->back()->with($status == 'Telat' ? 'error' : 'success', $pesan);
     }
 
     public function absenPulang(Request $request)
@@ -115,6 +119,7 @@ class AbsensiController extends Controller
         $karyawan = Karyawan::where('user_id', Auth::id())->first();
         $absen = Absensi::where('karyawan_id', $karyawan->id)
                         ->where('tanggal', date('Y-m-d'))->first();
+                        
         if ($absen) {
             $absen->update(['jam_pulang' => date('H:i:s')]);
             return redirect()->back()->with('success', 'Berhasil absen pulang!');

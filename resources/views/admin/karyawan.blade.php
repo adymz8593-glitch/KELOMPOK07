@@ -71,11 +71,9 @@
                         </span>
                     </td>
                     <td class="text-muted">#{{ $k->nik }}</td>
-                    {{-- DIPERBAIKI: Mengambil data langsung dari no_hp --}}
                     <td class="text-medium fw-medium text-dark">
                         {{ $k->no_hp ?? '-' }}
                     </td>
-                    {{-- DIPERBAIKI: Mengambil data langsung dari alamat --}}
                     <td class="text-muted">{{ $k->alamat ? Str::limit($k->alamat, 25) : '-' }}</td>
                     
                     @if(Auth::user()->role === 'admin')
@@ -87,10 +85,10 @@
                                     Edit
                                 </button>
 
-                                <form action="{{ route('admin.karyawan.destroy', $k->id) }}" method="POST" class="m-0">
+                                <form action="{{ route('admin.karyawan.destroy', $k->id) }}" method="POST" class="m-0" id="delete-form-{{ $k->id }}">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="btn btn-sm btn-danger text-white fw-bold px-2 py-1" style="border-radius: 6px; font-size: 0.8rem;" onclick="return confirm('Hapus data ini dan akun loginnya?')">
+                                    <button type="button" class="btn btn-sm btn-danger text-white fw-bold px-2 py-1" style="border-radius: 6px; font-size: 0.8rem;" onclick="confirmDelete('{{ $k->id }}')">
                                         Hapus
                                     </button>
                                 </form>
@@ -135,7 +133,7 @@
                                 <input type="text" name="nama_karyawan" class="form-control bg-light border-0 py-2" value="{{ $k->nama_karyawan }}" required>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-bold small text- sz-muted text-uppercase">Username (Untuk Login)</label>
+                                <label class="form-label fw-bold small text-muted text-uppercase">Username (Untuk Login)</label>
                                 <input type="text" name="username" class="form-control bg-light border-0 py-2" value="{{ $k->user->username ?? '' }}" required>
                             </div>
                             <div class="col-md-6">
@@ -145,7 +143,6 @@
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small text-muted text-uppercase">Jabatan / Bagian</label>
                                 <select name="jabatan" class="form-select bg-light border-0 py-2" required>
-                                    {{-- List jabatan tetap sama --}}
                                     <optgroup label="Bidang Administrasi">
                                         <option value="Teknisi Administrasi" {{ $k->kode_jabatan == 'Teknisi Administrasi' ? 'selected' : '' }}>Teknisi Administrasi</option>
                                         <option value="Staf Administrasi" {{ $k->kode_jabatan == 'Staf Administrasi' ? 'selected' : '' }}>Staf Administrasi</option>
@@ -271,4 +268,23 @@
     </div>
 </div>
 @endif
+
+<script>
+    function confirmDelete(id) {
+        Swal.fire({
+            title: 'Apakah Anda yakin?',
+            text: "Data karyawan dan akun loginnya akan dihapus permanen!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Ya, Hapus!',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById('delete-form-' + id).submit();
+            }
+        });
+    }
+</script>
 @endsection

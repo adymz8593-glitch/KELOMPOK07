@@ -49,7 +49,6 @@
 
 @auth
 <div class="sidebar">
-    {{-- Ambil Role dengan Null-Coalesce agar tidak error --}}
     @php
         $user = auth()->user();
         $role = $user->role ?? 'guest';
@@ -95,9 +94,11 @@
     </div>
 
     <div class="logout-section">
-        <form action="{{ route('logout') }}" method="POST">
+        <form action="{{ route('logout') }}" method="POST" id="logout-form">
             @csrf
-            <button type="submit" class="btn btn-outline-danger border-0 w-100 d-flex align-items-center justify-content-center fw-bold" style="background: rgba(244, 63, 94, 0.1); border-radius: 12px; padding: 10px;">
+            <button type="button" class="btn btn-outline-danger border-0 w-100 d-flex align-items-center justify-content-center fw-bold" 
+                    style="background: rgba(244, 63, 94, 0.1); border-radius: 12px; padding: 10px;"
+                    onclick="confirmLogout()">
                 <i class="bi bi-box-arrow-left me-2"></i> Keluar
             </button>
         </form>
@@ -110,5 +111,25 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    function confirmLogout() {
+        Swal.fire({
+            title: 'Yakin ingin keluar?',
+            text: "Sesi Anda akan berakhir.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Ya, Keluar!',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById('logout-form').submit();
+            }
+        });
+    }
+</script>
 </body>
 </html>

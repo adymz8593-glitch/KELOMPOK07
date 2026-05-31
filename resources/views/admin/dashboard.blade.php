@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
     <style>
         :root {
@@ -123,13 +124,11 @@
     </div>
 
     <nav>
-        {{-- Dashboard Link (Dinamis) --}}
         @php $dashboardRoute = Auth::user()->role == 'admin' ? 'admin.dashboard' : 'kabid.dashboard'; @endphp
         <a href="{{ route($dashboardRoute) }}" class="nav-link {{ Request::routeIs($dashboardRoute) ? 'active' : '' }}">
             <i class="bi bi-grid-1x2-fill"></i> Dashboard
         </a>
 
-        {{-- FIX: Route disesuaikan ke .index & Hak Akses dibuka untuk Admin dan Kabid --}}
         @if(Auth::user()->role == 'admin' || Auth::user()->role == 'kabid')
         <a href="{{ route('admin.karyawan.index') }}" class="nav-link {{ Request::routeIs('admin.karyawan.index') ? 'active' : '' }}">
             <i class="bi bi-people-fill"></i> Data Karyawan
@@ -146,24 +145,22 @@
     </nav>
 
     <div style="position: absolute; bottom: 20px; width: 100%;" class="px-3">
-        <form action="{{ route('logout') }}" method="POST">
+        <button type="button" onclick="confirmLogout()" class="btn btn-outline-danger border-0 w-100 d-flex align-items-center justify-content-center fw-600" style="background: rgba(244, 63, 94, 0.1);">
+            <i class="bi bi-box-arrow-left me-2"></i> Keluar
+        </button>
+        <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
             @csrf
-            <button type="submit" class="btn btn-outline-danger border-0 w-100 d-flex align-items-center justify-content-center fw-600" style="background: rgba(244, 63, 94, 0.1);">
-                <i class="bi bi-box-arrow-left me-2"></i> Keluar
-            </button>
         </form>
     </div>
 </div>
 
 <div class="main-content">
-    
     <div class="welcome-banner shadow-sm">
         <h1>Halo, {{ Auth::user()->name }}! 👋</h1>
         <p>Anda login sebagai <strong>{{ strtoupper(Auth::user()->role) }}</strong>. Berikut ringkasan sistem hari ini.</p>
     </div>
 
     <div class="row g-4 mb-4">
-        {{-- Total Karyawan --}}
         <div class="col-md-4">
             <div class="stat-card">
                 <div class="icon-box bg-indigo-light">
@@ -173,8 +170,6 @@
                 <h3 class="fw-bold mb-0">{{ number_format($totalKaryawan, 0, ',', '.') }} <span class="fs-6 fw-normal text-muted">Orang</span></h3>
             </div>
         </div>
-
-        {{-- Hadir Hari Ini --}}
         <div class="col-md-4">
             <div class="stat-card">
                 <div class="icon-box bg-emerald-light">
@@ -184,8 +179,6 @@
                 <h3 class="fw-bold mb-0">{{ $hadirHariIni }} <span class="fs-6 fw-normal text-muted">Orang</span></h3>
             </div>
         </div>
-
-        {{-- Angka Finansial/Persetujuan --}}
         <div class="col-md-4">
             <div class="stat-card">
                 @if(Auth::user()->role == 'admin')
@@ -213,7 +206,6 @@
                         <h5 class="fw-bold mb-0">Karyawan Baru Terdaftar</h5>
                         <p class="text-muted small mb-0">Daftar 5 anggota tim terbaru yang bergabung.</p>
                     </div>
-                    {{-- FIX: Link dialihkan ke admin.karyawan.index dan dibuka juga untuk Kabid --}}
                     @if(Auth::user()->role == 'admin' || Auth::user()->role == 'kabid')
                         <a href="{{ route('admin.karyawan.index') }}" class="btn btn-sm btn-light border text-primary fw-bold px-3 py-2">Kelola Data</a>
                     @endif
@@ -268,9 +260,25 @@
             </div>
         </div>
     </div>
-
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    function confirmLogout() {
+        Swal.fire({
+            title: 'Yakin ingin keluar?',
+            text: "Anda akan mengakhiri sesi login saat ini.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#f43f5e',
+            cancelButtonColor: '#94a3b8',
+            confirmButtonText: 'Ya, Keluar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById('logout-form').submit();
+            }
+        })
+    }
+</script>
 </body>
 </html>

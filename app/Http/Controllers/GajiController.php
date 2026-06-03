@@ -18,17 +18,14 @@ class GajiController extends Controller
         // Admin utama berhak melihat seluruh riwayat pengajuan gaji staf
         $gajis = Gaji::with('karyawan')->latest()->get();
         
-        // Menampilkan list karyawan di drop-down form input (Sembunyikan akun kabid demi kerapian)
-        $karyawans = Karyawan::whereHas('user', function($query) {
-            $query->where('role', 'karyawan');
-        })->get();
+        // Mengambil semua data dari tabel karyawan agar semua karyawan (termasuk Kabid) muncul di drop-down
+        $karyawans = Karyawan::all(); 
         
         return view('admin.gaji', compact('gajis', 'karyawans'));
     }
 
     /**
      * FUNGSI UNTUK KABID: Monitoring & ACC Gaji Berdasarkan Bidang Masing-Masing
-     * FIX: Menggunakan LIKE query agar mencakup 20 sub-jabatan baru di Administrasi & Keuangan
      */
     public function indexKabid()
     {
@@ -38,26 +35,21 @@ class GajiController extends Controller
         $profilKabid = Karyawan::where('user_id', $user->id)->first();
 
         if ($profilKabid) {
-            // Ambil nama jabatan dasar (misal dari 'Kabid Keuangan' ambil kata 'Keuangan')
-            // Atau jika isi jabatannya sudah spesifik seperti 'Staf Keuangan', kita cari kata kuncinya
             $jabatanAsli = $profilKabid->kode_jabatan;
             
-            // Tentukan kata kunci pemotong otomatis agar pencarian LIKE lebih aman
             if (str_contains(strtolower($jabatanAsli), 'keuangan')) {
                 $divisiKataKunci = 'Keuangan';
             } else {
-                $divisiKataKunci = 'Admin'; // Menjangkau 'Administrasi' maupun 'Admin'
+                $divisiKataKunci = 'Admin'; 
             }
         } else {
-            // Fallback Cadangan: Jika relasi profil kosong, tebak berdasarkan nama role user
             $divisiKataKunci = ($user->role === 'kabid_keuangan') ? 'Keuangan' : 'Admin';
         }
 
-        // 2. Tarik semua data pengajuan gaji staf berdasarkan kecocokan kata kunci bidang (Kecuali Kabid itu sendiri)
+        // 2. Tarik semua data pengajuan gaji staf berdasarkan kecocokan kata kunci bidang
         $gajis = Gaji::with('karyawan')
-            ->whereHas('karyawan', function($query) use ($divisiKataKunci, $user) {
-                $query->where('kode_jabatan', 'LIKE', '%' . $divisiKataKunci . '%')
-                      ->where('user_id', '!=', $user->id);
+            ->whereHas('karyawan', function($query) use ($divisiKataKunci) {
+                $query->where('kode_jabatan', 'LIKE', '%' . $divisiKataKunci . '%');
             })->latest()->get();
         
         return view('kabid.gaji', compact('gajis'));
@@ -100,7 +92,7 @@ class GajiController extends Controller
             'tunjangan'   => $tunjangan,
             'potongan'    => $potongan,
             'total_gaji'  => $total,
-            'status'      => 'Pending', // Menunggu ACC Kabid
+            'status'      => 'Pending',
         ]);
 
         return redirect()->back()->with('success', 'Data gaji berhasil disimpan! Menunggu persetujuan Kabid.');

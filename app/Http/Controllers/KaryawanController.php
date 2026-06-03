@@ -12,10 +12,14 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Carbon\Carbon;
-use Barryvdh\DomPDF\Facade\Pdf; // Pastikan library dompdf sudah terinstall
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class KaryawanController extends Controller
 {
+    /**
+     * PERBAIKAN: Mengambil semua ID karyawan yang relevan dengan divisi Kabid
+     * Tanpa mengecualikan ID Kabid itu sendiri agar data tetap muncul
+     */
     private function getKaryawanIdsByRole($user)
     {
         $kabidProfil = Karyawan::where('user_id', $user->id)->first();
@@ -30,21 +34,16 @@ class KaryawanController extends Controller
             $kataKunci = 'Admin'; 
         }
 
+        // Dihapus: ->where('id', '!=', $kabidProfil->id)
         return Karyawan::where('kode_jabatan', 'LIKE', '%' . $kataKunci . '%')
-                       ->where('id', '!=', $kabidProfil->id) 
                        ->pluck('id')
                        ->toArray();
     }
 
-    // Fungsi Baru untuk Cetak Laporan PDF
     public function cetakLaporan(Request $request)
     {
-        // Sesuaikan query berdasarkan data yang ingin dicetak
         $data = Gaji::with('karyawan')->latest()->get(); 
-        
         $pdf = Pdf::loadView('admin.laporan_pdf', ['data' => $data]);
-        
-        // Langsung download file PDF
         return $pdf->download('Laporan_Gaji_' . date('Y-m-d') . '.pdf');
     }
 
@@ -66,18 +65,23 @@ class KaryawanController extends Controller
     {
         $user = Auth::user();
         $karyawanIds = $this->getKaryawanIdsByRole($user);
+        
+        $profilKabid = Karyawan::where('user_id', $user->id)->first();
+        $absensiKabid = $profilKabid ? Absensi::where('karyawan_id', $profilKabid->id)->orderBy('tanggal', 'DESC')->get() : collect([]);
 
         if (empty($karyawanIds)) {
             return view('kabid.dashboard', [
                 'totalKaryawan' => 0,
                 'gajiPending'   => 0,
-                'gajiTerakhir'  => collect([])
+                'gajiTerakhir'  => collect([]),
+                'absensiKabid'  => $absensiKabid
             ]);
         }
 
         $totalKaryawan = Karyawan::whereIn('id', $karyawanIds)->count();
         $gajiPending   = Gaji::whereIn('karyawan_id', $karyawanIds)->where('status', 'Pending')->count();
         
+        // Mengambil 5 gaji terakhir dari karyawan di divisi tersebut
         $gajiTerakhir = Gaji::with('karyawan')
                             ->whereIn('karyawan_id', $karyawanIds)
                             ->orderBy('created_at', 'DESC')
@@ -88,7 +92,7 @@ class KaryawanController extends Controller
                                 return $item;
                             });
 
-        return view('kabid.dashboard', compact('totalKaryawan', 'gajiPending', 'gajiTerakhir'));
+        return view('kabid.dashboard', compact('totalKaryawan', 'gajiPending', 'gajiTerakhir', 'absensiKabid'));
     }
 
     public function dashboard()

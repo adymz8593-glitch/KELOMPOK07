@@ -26,6 +26,13 @@
 </head>
 <body>
 
+@if(session('success'))
+    <script>Swal.fire({icon: 'success', title: 'Berhasil', text: '{{ session('success') }}'});</script>
+@endif
+@if(session('error'))
+    <script>Swal.fire({icon: 'error', title: 'Oops...', text: '{{ session('error') }}'});</script>
+@endif
+
 <div class="sidebar">
     <div>
         <a href="#" class="sidebar-brand"><i class="bi bi-wallet2 me-2 text-primary"></i> E-Payroll</a>
@@ -48,31 +55,53 @@
         <p class="mb-0 opacity-75">Panel kontrol untuk memantau data departemen Anda.</p>
     </div>
 
-    <div class="card border-0 shadow-sm p-4" style="border-radius: 20px;">
+    <div class="card border-0 shadow-sm p-4 mb-4" style="border-radius: 20px;">
         <h5 class="fw-bold mb-4"><i class="bi bi-lightning-charge-fill text-warning me-2"></i>Tindakan Cepat</h5>
-        <div class="d-flex flex-wrap gap-3">
-            <a href="{{ route('kabid.gaji') }}" class="btn btn-dark btn-lg px-4 py-3 btn-action shadow-sm" style="min-width: 280px;">
-                <div class="d-flex align-items-center">
-                    <i class="bi bi-shield-check fs-3 me-3 text-warning"></i>
-                    <div class="text-start">
-                        <div class="small opacity-75">Gaji & Bonus</div>
-                        <div class="fw-bold text-white">Validasi Penggajian</div>
-                    </div>
+        
+        <div class="row g-3">
+            <div class="col-md-8">
+                <div class="d-flex flex-wrap gap-3">
+                    <a href="{{ route('kabid.gaji') }}" class="btn btn-dark btn-lg px-4 py-3 btn-action shadow-sm" style="flex: 1; min-width: 250px;">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-shield-check fs-3 me-3 text-warning"></i>
+                            <div class="text-start">
+                                <div class="small opacity-75">Gaji & Bonus</div>
+                                <div class="fw-bold text-white">Validasi Penggajian</div>
+                            </div>
+                        </div>
+                    </a>
+                    <a href="{{ route('kabid.absensi') }}" class="btn btn-light border btn-lg px-4 py-3 btn-action shadow-sm" style="flex: 1; min-width: 250px;">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-eye fs-3 me-3 text-primary"></i>
+                            <div class="text-start">
+                                <div class="small opacity-75">Log Kedisiplinan</div>
+                                <div class="fw-bold">Monitoring Absensi</div>
+                            </div>
+                        </div>
+                    </a>
                 </div>
-            </a>
-            <a href="{{ route('kabid.absensi') }}" class="btn btn-light border btn-lg px-4 py-3 btn-action shadow-sm" style="min-width: 280px;">
-                <div class="d-flex align-items-center">
-                    <i class="bi bi-eye fs-3 me-3 text-primary"></i>
-                    <div class="text-start">
-                        <div class="small opacity-75">Log Kedisiplinan</div>
-                        <div class="fw-bold">Monitoring Absensi</div>
-                    </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="d-flex flex-column gap-2">
+                    <form action="{{ route('kabid.absen.masuk') }}" method="POST" onsubmit="handleAbsen(event, 'Absen Masuk')">
+                        @csrf
+                        <button type="submit" class="btn btn-success btn-lg py-3 btn-action shadow-sm w-100">
+                            <i class="bi bi-box-arrow-in-right me-2"></i> Absen Masuk
+                        </button>
+                    </form>
+                    <form action="{{ route('kabid.absen.pulang') }}" method="POST" onsubmit="handleAbsen(event, 'Absen Pulang')">
+                        @csrf
+                        <button type="submit" class="btn btn-danger btn-lg py-3 btn-action shadow-sm w-100">
+                            <i class="bi bi-box-arrow-left me-2"></i> Absen Pulang
+                        </button>
+                    </form>
                 </div>
-            </a>
+            </div>
         </div>
     </div>
 
-    <div class="card border-0 shadow-sm p-4 mt-4" style="border-radius: 20px;">
+    <div class="card border-0 shadow-sm p-4 mb-4" style="border-radius: 20px;">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h5 class="fw-bold m-0"><i class="bi bi-clock-history me-2 text-primary"></i>Gaji Terakhir Diproses</h5>
             <a href="{{ route('kabid.gaji') }}" class="btn btn-sm btn-outline-primary">Lihat Semua</a>
@@ -88,14 +117,14 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse($gajiTerakhir as $gaji)
+                    @forelse($gajiTerakhir ?? [] as $gaji)
                     <tr>
                         <td class="fw-semibold">{{ $gaji->karyawan->nama_karyawan ?? 'N/A' }}</td>
                         <td>{{ $gaji->periode_tampil ?? ($gaji->periode ?? 'Data Belum Tersedia') }}</td>
-                        <td>Rp {{ number_format($gaji->total_gaji, 0, ',', '.') }}</td>
+                        <td>Rp {{ number_format($gaji->total_gaji ?? 0, 0, ',', '.') }}</td>
                         <td>
-                            <span class="badge {{ $gaji->status == 'Disetujui' ? 'bg-success' : 'bg-warning' }}">
-                                {{ $gaji->status }}
+                            <span class="badge {{ ($gaji->status ?? '') == 'Disetujui' ? 'bg-success' : 'bg-warning' }}">
+                                {{ $gaji->status ?? 'Pending' }}
                             </span>
                         </td>
                     </tr>
@@ -108,10 +137,41 @@
             </table>
         </div>
     </div>
+
+    <div class="card border-0 shadow-sm p-4" style="border-radius: 20px;">
+        <h5 class="fw-bold mb-4"><i class="bi bi-calendar-check me-2 text-primary"></i>Riwayat Absensi Saya</h5>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Tanggal</th>
+                        <th>Jam Masuk</th>
+                        <th>Jam Pulang</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($absensiKabid ?? [] as $a)
+                    <tr>
+                        <td>{{ $a->tanggal }}</td>
+                        <td>{{ $a->jam_masuk ?? '-' }}</td>
+                        <td>{{ $a->jam_pulang ?? '-' }}</td>
+                        <td><span class="badge bg-primary rounded-pill">{{ $a->status }}</span></td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="4" class="text-center text-muted py-3">Belum ada riwayat absensi.</td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+    // Fungsi Konfirmasi Logout
     function confirmLogout() {
         Swal.fire({ 
             title: 'Ingin Keluar?', 
@@ -123,6 +183,24 @@
         }).then((result) => {
             if (result.isConfirmed) { document.getElementById('logout-form').submit(); }
         })
+    }
+
+    // Fungsi Handle Absen dengan SweetAlert
+    function handleAbsen(event, type) {
+        event.preventDefault();
+        const form = event.target;
+        Swal.fire({
+            title: 'Konfirmasi Absensi',
+            text: "Anda yakin ingin melakukan " + type + "?",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#4f46e5',
+            confirmButtonText: 'Ya, Absen Sekarang'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                form.submit();
+            }
+        });
     }
 </script>
 </body>

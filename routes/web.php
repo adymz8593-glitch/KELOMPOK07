@@ -31,8 +31,6 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/gaji/store', [GajiController::class, 'store'])->name('admin.gaji.store');
         Route::delete('/gaji/{id}', [GajiController::class, 'destroy'])->name('admin.gaji.destroy');
         Route::get('/gaji/cetak/{id}', [GajiController::class, 'cetakPdf'])->name('admin.gaji.cetak');
-        
-        // RUTE BARU: Cetak Laporan Global (bukan per ID)
         Route::get('/cetak-laporan', [KaryawanController::class, 'cetakLaporan'])->name('admin.cetak.laporan');
     });
 
@@ -53,9 +51,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/gaji', [GajiController::class, 'indexKabid'])->name('kabid.gaji');
         Route::post('/gaji/acc/{id}', [GajiController::class, 'accGaji'])->name('kabid.gaji.acc');
         Route::get('/gaji/cetak/{id}', [GajiController::class, 'cetakPdf'])->name('kabid.gaji.cetak');
-        
-        // RUTE BARU: Cetak Laporan untuk Kabid
         Route::get('/cetak-laporan', [KaryawanController::class, 'cetakLaporan'])->name('kabid.cetak.laporan');
+
+        // PERBAIKAN: Menambahkan akses absensi karyawan ke dalam akses Kabid
+        Route::post('/absensi/masuk', [AbsensiController::class, 'absenMasuk'])->name('kabid.absen.masuk');
+        Route::post('/absensi/pulang', [AbsensiController::class, 'absenPulang'])->name('kabid.absen.pulang');
     });
 
     Route::get('/debug-jabatan', function() {

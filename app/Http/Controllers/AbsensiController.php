@@ -15,7 +15,6 @@ class AbsensiController extends Controller
      */
     private function cekAlphaOtomatis()
     {
-        // Hanya jalankan pengecekan setelah jam pulang (misal setelah jam 17:00 WIB)
         if (Carbon::now('Asia/Jakarta')->format('H:i') >= '17:00') {
             $semuaKaryawan = Karyawan::all();
             $hariIni = date('Y-m-d');
@@ -146,7 +145,8 @@ class AbsensiController extends Controller
                         ->where('tanggal', date('Y-m-d'))->first();
                         
         if ($absen) {
-            $absen->update(['jam_pulang' => date('H:i:s')]);
+            $jamPulang = Carbon::now('Asia/Jakarta')->format('H:i:s');
+            $absen->update(['jam_pulang' => $jamPulang]);
             return redirect()->back()->with('success', 'Berhasil absen pulang!');
         }
         return redirect()->back()->with('error', 'Anda belum absen masuk!');
@@ -154,7 +154,7 @@ class AbsensiController extends Controller
 
     public function indexAdmin(Request $request)
     {
-        $this->cekAlphaOtomatis(); // Panggil pengecekan otomatis
+        $this->cekAlphaOtomatis();
         
         $bulan = $request->get('bulan', date('m'));
         $tahun = $request->get('tahun', date('Y'));
@@ -167,7 +167,7 @@ class AbsensiController extends Controller
 
     public function indexKabid(Request $request)
     {
-        $this->cekAlphaOtomatis(); // Panggil pengecekan otomatis
+        $this->cekAlphaOtomatis();
         
         $bulan = $request->get('bulan', date('m'));
         $tahun = $request->get('tahun', date('Y'));
